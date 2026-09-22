@@ -39,14 +39,19 @@ export async function POST(request: Request) {
 
     const passwordOk = await verifyPassword(data.password, admin.passwordHash);
     if (!passwordOk) {
-      const attempts = (admin.failedLoginAttempts ?? 0) + 1;
-      if (attempts >= MAX_ATTEMPTS) {
-        admin.failedLoginAttempts = 0;
-        admin.lockedUntil = new Date(Date.now() + LOCK_MINUTES * 60_000);
-      } else {
-        admin.failedLoginAttempts = attempts;
+      // Incremento atomico: con richieste concorrenti un read-modify-write
+      // perderebbe conteggi, indebolendo proprio il blocco anti forza bruta.
+      const updated = await AdminUser.findByIdAndUpdate(
+        admin._id,
+        { $inc: { failedLoginAttempts: 1 } },
+        { new: true }
+      ).lean();
+
+      if ((updated?.failedLoginAttempts ?? 0) >= MAX_ATTEMPTS) {
+        await AdminUser.findByIdAndUpdate(admin._id, {
+          $set: { lockedUntil: new Date(Date.now() + LOCK_MINUTES * 60_000), failedLoginAttempts: 0 },
+        });
       }
-      await admin.save();
       return fail(GENERIC_ERROR, 401);
     }
 
