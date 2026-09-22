@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { buttonPrimary } from "@/components/ui";
-import { Field, TextInput, Select, ErrorMessage } from "@/components/form";
+import { Field, TextInput, Select, ErrorMessage, submitJson } from "@/components/form";
+import { toDateInputValue } from "@/lib/billing";
 
 /**
  * Form di registrazione pagamento.
@@ -38,24 +39,24 @@ export function RegisterPaymentForm({
     setError(null);
 
     const form = new FormData(event.currentTarget);
-    const response = await fetch(`/api/subscriptions/${subscriptionId}/payments`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    const result = await submitJson(
+      `/api/subscriptions/${subscriptionId}/payments`,
+      "POST",
+      {
         amount: Number(form.get("amount")),
         donationAmount: Number(form.get("donationAmount")),
         paidAt: String(form.get("paidAt")),
         method: String(form.get("method")),
         reference: String(form.get("reference") ?? ""),
         notes: String(form.get("notes") ?? ""),
-      }),
-    });
+      },
+      "Registrazione non riuscita. Riprova."
+    );
 
     setPending(false);
 
-    if (!response.ok) {
-      const body = await response.json().catch(() => null);
-      setError(body?.error ?? "Registrazione non riuscita. Riprova.");
+    if (!result.ok) {
+      setError(result.error);
       return;
     }
 
@@ -91,7 +92,7 @@ export function RegisterPaymentForm({
           <TextInput
             type="date"
             name="paidAt"
-            defaultValue={new Date().toISOString().slice(0, 10)}
+            defaultValue={toDateInputValue(new Date())}
             required
           />
         </Field>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { Field, TextInput, Select, Textarea, ErrorMessage } from "@/components/form";
+import { Field, TextInput, Select, Textarea, ErrorMessage, submitJson } from "@/components/form";
 import { buttonPrimary } from "@/components/ui";
 
 const PERIODICITY_OPTIONS = [
@@ -49,13 +49,13 @@ interface ServiceOption {
  * cambio di identità dell'abbonamento.
  */
 export function SubscriptionForm({
-  people,
-  services,
+  people = [],
+  services = [],
   initialValues,
   onSuccess,
 }: {
-  people: PersonOption[];
-  services: ServiceOption[];
+  people?: PersonOption[];
+  services?: ServiceOption[];
   initialValues?: SubscriptionFormValues;
   onSuccess: (message: string) => void;
 }) {
@@ -83,17 +83,12 @@ export function SubscriptionForm({
     }
 
     const url = isEdit ? `/api/subscriptions/${initialValues!._id}` : "/api/subscriptions";
-    const response = await fetch(url, {
-      method: isEdit ? "PATCH" : "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    const result = await submitJson(url, isEdit ? "PATCH" : "POST", payload);
 
     setPending(false);
 
-    if (!response.ok) {
-      const body = await response.json().catch(() => null);
-      setError(body?.error ?? "Salvataggio non riuscito. Riprova.");
+    if (!result.ok) {
+      setError(result.error);
       return;
     }
 

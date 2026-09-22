@@ -60,13 +60,9 @@ export function NewSubscriptionButton({
  */
 export function SubscriptionRowActions({
   subscription,
-  people,
-  services,
   redirectOnDeleteTo,
 }: {
   subscription: SubscriptionFormValues;
-  people: PersonOption[];
-  services: ServiceOption[];
   redirectOnDeleteTo?: string;
 }) {
   const [editOpen, setEditOpen] = useState(false);
@@ -132,8 +128,6 @@ export function SubscriptionRowActions({
 
       <Modal open={editOpen} onClose={() => setEditOpen(false)} title="Modifica abbonamento">
         <SubscriptionForm
-          people={people}
-          services={services}
           initialValues={subscription}
           onSuccess={(message) => {
             setEditOpen(false);

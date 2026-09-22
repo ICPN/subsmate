@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { Field, TextInput, Textarea, Checkbox, ErrorMessage } from "@/components/form";
+import { Field, TextInput, Textarea, Checkbox, ErrorMessage, submitJson } from "@/components/form";
 import { buttonPrimary } from "@/components/ui";
 
 export interface PersonFormValues {
@@ -39,17 +39,12 @@ export function PersonForm({
     };
 
     const url = isEdit ? `/api/people/${initialValues!._id}` : "/api/people";
-    const response = await fetch(url, {
-      method: isEdit ? "PATCH" : "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    const result = await submitJson(url, isEdit ? "PATCH" : "POST", payload);
 
     setPending(false);
 
-    if (!response.ok) {
-      const body = await response.json().catch(() => null);
-      setError(body?.error ?? "Salvataggio non riuscito. Riprova.");
+    if (!result.ok) {
+      setError(result.error);
       return;
     }
 

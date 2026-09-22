@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/requireAdmin";
-import { getSubscriptionDetail, listPeople, listServices } from "@/lib/queries";
+import { getSubscriptionDetail } from "@/lib/queries";
 import { SubscriptionRowActions } from "@/components/SubscriptionActions";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge, Pill } from "@/components/StatusBadge";
 import { Card, TableWrap, Th, Td, EmptyState, ServiceMark } from "@/components/ui";
 import { RegisterPaymentForm } from "@/components/RegisterPaymentForm";
 import { PaymentRowActions } from "@/components/PaymentRowActions";
-import { formatEUR, formatDate, statusDetail } from "@/lib/billing";
+import { formatEUR, formatDate, statusDetail, toDateInputValue } from "@/lib/billing";
 
 export const dynamic = "force-dynamic";
 
@@ -37,15 +37,6 @@ export default async function SubscriptionDetailPage({
   const { subscription: sub, payments } = detail;
   const personName = sub.person ? `${sub.person.firstName} ${sub.person.lastName}` : "Persona rimossa";
 
-  const [people, services] = await Promise.all([listPeople(), listServices()]);
-  const peopleOptions = people.map((person) => ({
-    _id: String(person._id),
-    firstName: person.firstName,
-    lastName: person.lastName,
-    email: person.email,
-  }));
-  const serviceOptions = services.map((item) => ({ _id: String(item._id), name: item.name }));
-
   return (
     <div className="space-y-8">
       <div>
@@ -73,13 +64,9 @@ export default async function SubscriptionDetailPage({
                 periodicity: sub.periodicity,
                 donationSupplement: sub.donationSupplement,
                 onboardingStatus: sub.onboardingStatus,
-                startDate: sub.startDate
-                  ? new Date(sub.startDate).toISOString().slice(0, 10)
-                  : "",
+                startDate: toDateInputValue(sub.startDate),
                 notes: sub.notes ?? "",
               }}
-              people={peopleOptions}
-              services={serviceOptions}
               redirectOnDeleteTo="/abbonamenti"
             />
           </div>
@@ -131,14 +118,14 @@ export default async function SubscriptionDetailPage({
         >
           {payments.length === 0 ? (
             <EmptyState title="Nessun pagamento registrato">
-              {sub.onboardingStatus === "attivo"
-                ? "Nessun pagamento ancora registrato per questo abbonamento."
-                : (
+              {sub.onboardingStatus === "da_attivare"
+                ? (
                   <>
                     Registra il primo pagamento: l&apos;abbonamento passerà da
                     &laquo;{ONBOARDING_LABELS[sub.onboardingStatus]}&raquo; ad &laquo;Attivo&raquo;.
                   </>
-                )}
+                )
+                : "Nessun pagamento ancora registrato per questo abbonamento."}
             </EmptyState>
           ) : (
             <TableWrap>

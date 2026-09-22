@@ -59,6 +59,39 @@ export function Checkbox({
   );
 }
 
+/**
+ * Invia un payload JSON e normalizza gli esiti in un solo tipo di ritorno,
+ * cosicché ogni form possa fare `setPending(false)` e mostrare l'errore allo
+ * stesso modo per un rifiuto della fetch (rete caduta) e per una risposta
+ * HTTP non-ok — prima solo il secondo caso era gestito, e un fallimento di
+ * rete lasciava il bottone bloccato su "Salvataggio in corso" per sempre.
+ */
+export async function submitJson(
+  url: string,
+  method: "POST" | "PATCH",
+  payload: unknown,
+  fallbackError = "Salvataggio non riuscito. Riprova."
+): Promise<{ ok: true; data: unknown } | { ok: false; error: string }> {
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    return { ok: false, error: "Connessione non riuscita. Verifica la rete e riprova." };
+  }
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    return { ok: false, error: body?.error ?? fallbackError };
+  }
+
+  const data = await response.json().catch(() => null);
+  return { ok: true, data };
+}
+
 export function ErrorMessage({ children }: { children: ReactNode }) {
   return (
     <p

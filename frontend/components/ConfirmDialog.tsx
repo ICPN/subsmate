@@ -29,6 +29,15 @@ export function ConfirmDialog({
 }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Azzera l'errore del tentativo precedente quando il dialog si riapre,
+  // aggiustando lo stato durante il render invece che in un useEffect
+  // (pattern raccomandato da React per "resettare stato quando cambia un
+  // prop", evita anche il giro di render in più di un effect).
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) setError(null);
+  }
 
   async function handleConfirm() {
     setPending(true);

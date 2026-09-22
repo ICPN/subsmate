@@ -5,7 +5,7 @@ import { NewSubscriptionButton, SubscriptionRowActions } from "@/components/Subs
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge, Pill } from "@/components/StatusBadge";
 import { Card, TableWrap, Th, Td, EmptyState, ServiceMark } from "@/components/ui";
-import { formatEUR, formatDate, statusDetail, type PaymentStatus } from "@/lib/billing";
+import { formatEUR, formatDate, statusDetail, toDateInputValue, type PaymentStatus } from "@/lib/billing";
 
 export const dynamic = "force-dynamic";
 
@@ -181,13 +181,9 @@ export default async function SubscriptionsPage({
                           periodicity: sub.periodicity,
                           donationSupplement: sub.donationSupplement,
                           onboardingStatus: sub.onboardingStatus,
-                          startDate: sub.startDate
-                            ? new Date(sub.startDate).toISOString().slice(0, 10)
-                            : "",
+                          startDate: toDateInputValue(sub.startDate),
                           notes: sub.notes ?? "",
                         }}
-                        people={peopleOptions}
-                        services={serviceOptions}
                       />
                     </Td>
                   </tr>
