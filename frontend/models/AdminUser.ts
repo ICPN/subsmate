@@ -13,6 +13,11 @@ const AdminUserSchema = new Schema(
     role: { type: String, enum: ["admin", "owner"], default: "admin" },
     active: { type: Boolean, default: true },
     lastLoginAt: { type: Date, default: null },
+    // Confrontato con l'iat del token: cambiare password invalida le sessioni aperte.
+    passwordChangedAt: { type: Date, default: null },
+    // Protezione forza bruta: 5 fallimenti bloccano l'account per 15 minuti.
+    failedLoginAttempts: { type: Number, default: 0, min: 0 },
+    lockedUntil: { type: Date, default: null },
   },
   { timestamps: true }
 );

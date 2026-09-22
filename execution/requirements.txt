@@ -1,3 +1,4 @@
 # Dipendenze degli script deterministici di SubsMate
 pymongo>=4.8
 python-dotenv>=1.0
+bcrypt>=4.1
