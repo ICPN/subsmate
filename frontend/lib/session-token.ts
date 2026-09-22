@@ -36,8 +36,11 @@ export async function signSessionToken(adminId: string): Promise<string> {
 
 /** Restituisce null per token assente, manomesso, scaduto o malformato. */
 export async function verifySessionToken(token: string): Promise<SessionPayload | null> {
+  // Fuori dal try: AUTH_SECRET mancante è un errore di configurazione e deve
+  // propagarsi, non essere confuso con un token invalido.
+  const key = secretKey();
   try {
-    const { payload } = await jwtVerify(token, secretKey(), { algorithms: ["HS256"] });
+    const { payload } = await jwtVerify(token, key, { algorithms: ["HS256"] });
     if (typeof payload.sub !== "string" || typeof payload.iat !== "number" || typeof payload.exp !== "number") {
       return null;
     }
