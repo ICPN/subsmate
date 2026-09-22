@@ -8,8 +8,10 @@ export default async function LoginPage({
   searchParams: Promise<{ from?: string }>;
 }) {
   const { from } = await searchParams;
-  // Solo percorsi interni: "//evil.com" e "https://evil.com" vengono scartati.
-  const target = from && from.startsWith("/") && !from.startsWith("//") ? from : "/";
+  // Validazione positiva: accetta solo un percorso interno che inizia con "/"
+  // e non prosegue con "/" o "\". I browser trattano "\" come "/" negli schemi
+  // speciali, quindi "/\evil.com" sarebbe un redirect fuori dominio.
+  const target = from && /^\/(?![/\\])/.test(from) ? from : "/";
 
   return (
     <div className="flex min-h-screen items-center justify-center px-6">

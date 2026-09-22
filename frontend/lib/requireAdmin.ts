@@ -6,8 +6,8 @@ import { SESSION_COOKIE, verifySessionToken } from "@/lib/session-token";
 import { fail } from "@/lib/api";
 
 /**
- * Controllo autorevole della sessione. Gira in Node runtime perche' interroga
- * MongoDB: il middleware in Edge non puo' farlo e verifica solo la firma.
+ * Controllo autorevole della sessione. Gira in Node runtime perché interroga
+ * MongoDB: il middleware in Edge non può farlo e verifica solo la firma.
  */
 
 export interface CurrentAdmin {
@@ -53,12 +53,12 @@ export async function requireAdmin(fromPath?: string): Promise<CurrentAdmin> {
 }
 
 /**
- * Per le route API. Si usa come wrapper invece di una chiamata libera: cosi' una
+ * Per le route API. Si usa come wrapper invece di una chiamata libera: così una
  * route non protetta si nota nel diff, invece di restare aperta per dimenticanza.
  *
- * Generico su `Ctx` (invece di una tupla `...args`) perche' Next.js 16 tipizza
+ * Generico su `Ctx` (invece di una tupla `...args`) perché Next.js 16 tipizza
  * il secondo parametro dei route handler con parametri dinamici come oggetto
- * `{ params: Promise<...> }`, non come elemento di una tupla arbitraria: cosi'
+ * `{ params: Promise<...> }`, non come elemento di una tupla arbitraria: così
  * il tipo restituito resta compatibile sia con `GET(request)` sia con
  * `GET(request, { params })`, che Next verifica staticamente.
  */

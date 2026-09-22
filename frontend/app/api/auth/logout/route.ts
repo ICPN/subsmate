@@ -3,8 +3,8 @@ import { SESSION_COOKIE } from "@/lib/session-token";
 import { ok, handleError } from "@/lib/api";
 
 /**
- * Non protetta da withAdmin: deve funzionare anche con una sessione gia' scaduta
- * o invalida, perche' il suo effetto - rimuovere il cookie - e' sicuro in ogni caso.
+ * Non protetta da withAdmin: deve funzionare anche con una sessione già scaduta
+ * o invalida, perché il suo effetto - rimuovere il cookie - è sicuro in ogni caso.
  */
 export async function POST() {
   try {

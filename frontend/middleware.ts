@@ -3,8 +3,8 @@ import { SESSION_COOKIE, verifySessionToken } from "@/lib/session-token";
 
 /**
  * Primo livello, in Edge runtime: verifica SOLO la firma del cookie.
- * Non e' autorevole - non puo' interrogare MongoDB da Edge - ma evita che una
- * pagina protetta inizi a renderizzarsi. Il controllo vero e' requireAdmin().
+ * Non è autorevole - non può interrogare MongoDB da Edge - ma evita che una
+ * pagina protetta inizi a renderizzarsi. Il controllo vero è requireAdmin().
  */
 
 const PUBLIC_PATHS = ["/login", "/api/auth/login", "/api/auth/logout"];
@@ -21,12 +21,15 @@ export async function middleware(request: NextRequest) {
   }
 
   const url = request.nextUrl.clone();
+  const from = pathname + request.nextUrl.search;
   url.pathname = "/login";
   url.search = "";
-  url.searchParams.set("from", pathname);
+  url.searchParams.set("from", from);
   return NextResponse.redirect(url);
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  // Esclude anche gli asset statici in public/ (qualunque file con estensione),
+  // così un logo o un font referenziato da /login non risulta rediretto.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)"],
 };
