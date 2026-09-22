@@ -16,7 +16,6 @@ import getpass
 import secrets
 import sys
 from datetime import datetime, timezone
-from pathlib import Path
 
 import bcrypt
 
@@ -34,7 +33,7 @@ def ensure_auth_secret() -> None:
         for line in content.splitlines():
             stripped = line.strip()
             if stripped.startswith("AUTH_SECRET=") and stripped not in ('AUTH_SECRET=""', "AUTH_SECRET="):
-                print("AUTH_SECRET gia' presente, lasciata invariata.")
+                print("AUTH_SECRET già presente, lasciata invariata.")
                 return
     else:
         content = ""

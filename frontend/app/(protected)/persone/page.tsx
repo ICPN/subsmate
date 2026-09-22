@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { requireAdmin } from "@/lib/requireAdmin";
 import { listPeople, listSubscriptions } from "@/lib/queries";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, TableWrap, Th, Td, EmptyState, StatCard } from "@/components/ui";
@@ -8,6 +9,7 @@ import { formatEUR } from "@/lib/billing";
 export const dynamic = "force-dynamic";
 
 export default async function PeoplePage() {
+  await requireAdmin("/persone");
   const [people, subscriptions] = await Promise.all([listPeople(), listSubscriptions()]);
 
   // Aggregato per persona: quanti servizi ha e quanto deve in totale.

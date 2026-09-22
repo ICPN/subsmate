@@ -1,3 +1,4 @@
+import { requireAdmin } from "@/lib/requireAdmin";
 import { getDashboardData } from "@/lib/queries";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -17,6 +18,7 @@ import { formatEUR, formatDate, statusDetail } from "@/lib/billing";
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
+  await requireAdmin("/");
   const { totals, counters, attention } = await getDashboardData();
 
   return (

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { connectToDatabase } from "@/lib/mongodb";
 import { AdminUser } from "@/models/AdminUser";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/session-token";
-import { fail } from "@/lib/api";
+import { fail, handleError } from "@/lib/api";
 
 /**
  * Controllo autorevole della sessione. Gira in Node runtime perché interroga
@@ -66,8 +66,12 @@ export function withAdmin<Ctx = unknown>(
   handler: (request: Request, context: Ctx) => Promise<Response>
 ) {
   return async (request: Request, context: Ctx): Promise<Response> => {
-    const admin = await getCurrentAdmin();
-    if (!admin) return fail("Autenticazione richiesta", 401);
-    return handler(request, context);
+    try {
+      const admin = await getCurrentAdmin();
+      if (!admin) return fail("Autenticazione richiesta", 401);
+      return await handler(request, context);
+    } catch (err) {
+      return handleError(err);
+    }
   };
 }
