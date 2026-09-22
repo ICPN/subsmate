@@ -1,0 +1,40 @@
+# Dipendenze
+node_modules/
+.pnp
+.pnp.js
+
+# Build Next.js
+frontend/.next/
+frontend/out/
+frontend/build/
+next-env.d.ts
+
+# File intermedi (mai committare, sempre rigenerabili)
+.tmp/
+!.tmp/.gitkeep
+
+# Ambiente e segreti
+.env
+.env.local
+.env.*.local
+# Qualsiasi file *.env (es. atlas-credentials.env generato da Atlas):
+# .env non lo intercetta, e contiene la password del database in chiaro.
+*.env
+credentials.json
+credentials.json
+token.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# Sistema / editor
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+.vscode/
+.idea/

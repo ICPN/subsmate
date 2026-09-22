@@ -1,0 +1,27 @@
+{
+  "_commento": "Mappatura colonne del tab Subs del Google Sheet verso i campi SubsMate. Aggiornare qui, non nel codice Python, se cambiano le intestazioni del Sheet.",
+  "email": ["Email", "Email Address", "Indirizzo email"],
+  "firstName": ["Nome", "First Name"],
+  "lastName": ["Cognome", "Last Name"],
+  "service": ["Servizio", "Service", "Piano", "Plan"],
+  "periodicity": ["Periodicità", "Periodicita", "Frequenza", "Billing"],
+  "donationSupplement": ["Donazione", "Supplemento", "Donation"],
+  "lastPaymentDate": ["Ultimo pagamento", "Data ultimo pagamento", "Last Payment"],
+  "amount": ["Importo", "Quota", "Amount"],
+  "notes": ["Note", "Notes"],
+  "_valori": {
+    "periodicity": {
+      "mensile": "monthly",
+      "monthly": "monthly",
+      "trimestrale": "quarterly",
+      "quarterly": "quarterly"
+    },
+    "service": {
+      "claude": "claude",
+      "claude ai": "claude",
+      "chatgpt": "chatgpt",
+      "openai": "chatgpt",
+      "chat gpt": "chatgpt"
+    }
+  }
+}

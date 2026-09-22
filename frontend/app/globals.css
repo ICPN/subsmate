@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+/**
+ * Token di design SubsMate — derivati da brand-guidelines.md.
+ * Nessun tema scuro: le guidelines escludono lo sfondo scuro sulle pagine di dati
+ * (§8), il navy resta confinato a header, footer e bottoni primari.
+ */
+:root {
+  /* Base — identità, coerente con ICPN */
+  --ink-navy: #161b2d;
+  --paper: #ffffff;
+  --surface: #f4f5f8;
+  --border: #e2e4ea;
+  --ink-muted: #5b6072;
+
+  /* Funzionali — stato pagamento. Mai riusati per altro (§3). */
+  --status-ok: #2f8f5b;
+  --status-warn: #c98a1f;
+  --status-critical: #c4453b;
+  --status-neutral: #9aa0ae;
+
+  --radius: 8px;
+}
+
+@theme inline {
+  --color-ink: var(--ink-navy);
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
+  --color-muted: var(--ink-muted);
+  --color-status-ok: var(--status-ok);
+  --color-status-warn: var(--status-warn);
+  --color-status-critical: var(--status-critical);
+  --color-status-neutral: var(--status-neutral);
+
+  /* Manrope per "guardare" (titoli, numeri), Inter per "leggere/confrontare" (§4) */
+  --font-display: var(--font-manrope);
+  --font-sans: var(--font-inter);
+
+  --radius-card: 8px;
+}
+
+html {
+  background: var(--paper);
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink-navy);
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-manrope), system-ui, sans-serif;
+  letter-spacing: -0.01em;
+}
+
+/* Le cifre devono incolonnarsi: importi e date si confrontano a colpo d'occhio (§4). */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Focus visibile e coerente su tutti i controlli, senza ombre decorative. */
+:where(a, button, input, select, textarea):focus-visible {
+  outline: 2px solid var(--ink-navy);
+  outline-offset: 2px;
+}
