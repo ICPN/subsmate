@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/requireAdmin";
-import { listSubscriptions, listServices } from "@/lib/queries";
+import { listSubscriptions, listServices, listPeople } from "@/lib/queries";
+import { NewSubscriptionButton, SubscriptionRowActions } from "@/components/SubscriptionActions";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge, Pill } from "@/components/StatusBadge";
 import { Card, TableWrap, Th, Td, EmptyState, ServiceMark } from "@/components/ui";
@@ -28,10 +29,19 @@ export default async function SubscriptionsPage({
 }) {
   await requireAdmin("/abbonamenti");
   const { status, service } = await searchParams;
-  const [allSubscriptions, services] = await Promise.all([
+  const [allSubscriptions, services, people] = await Promise.all([
     listSubscriptions(service ? { service } : {}),
     listServices(),
+    listPeople(),
   ]);
+
+  const peopleOptions = people.map((person) => ({
+    _id: String(person._id),
+    firstName: person.firstName,
+    lastName: person.lastName,
+    email: person.email,
+  }));
+  const serviceOptions = services.map((item) => ({ _id: String(item._id), name: item.name }));
 
   // Lo stato è calcolato, non salvato: il filtro si applica dopo il calcolo.
   const subscriptions =
@@ -54,6 +64,7 @@ export default async function SubscriptionsPage({
       <PageHeader
         title="Abbonamenti"
         description="Una riga per ogni coppia persona × servizio. Quota, scadenza e stato sono calcolati dall'ultimo pagamento registrato."
+        action={<NewSubscriptionButton people={peopleOptions} services={serviceOptions} />}
       />
 
       <div className="flex flex-wrap items-center gap-6">
@@ -113,6 +124,7 @@ export default async function SubscriptionsPage({
                   <Th align="right">Totale</Th>
                   <Th>Scadenza</Th>
                   <Th>Stato</Th>
+                  <Th align="right">Azioni</Th>
                 </tr>
               </thead>
               <tbody>
@@ -155,6 +167,28 @@ export default async function SubscriptionsPage({
                     </Td>
                     <Td>
                       <StatusBadge status={sub.computed.status} />
+                    </Td>
+                    <Td align="right">
+                      <SubscriptionRowActions
+                        subscription={{
+                          _id: String(sub._id),
+                          person: sub.person ? String(sub.person._id) : "",
+                          personLabel: sub.person
+                            ? `${sub.person.firstName} ${sub.person.lastName} — ${sub.person.email}`
+                            : "Persona rimossa",
+                          service: sub.service ? String(sub.service._id) : "",
+                          serviceLabel: sub.service?.name ?? "Servizio rimosso",
+                          periodicity: sub.periodicity,
+                          donationSupplement: sub.donationSupplement,
+                          onboardingStatus: sub.onboardingStatus,
+                          startDate: sub.startDate
+                            ? new Date(sub.startDate).toISOString().slice(0, 10)
+                            : "",
+                          notes: sub.notes ?? "",
+                        }}
+                        people={peopleOptions}
+                        services={serviceOptions}
+                      />
                     </Td>
                   </tr>
                 ))}

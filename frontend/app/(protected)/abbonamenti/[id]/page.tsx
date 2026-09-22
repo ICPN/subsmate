@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/requireAdmin";
-import { getSubscriptionDetail } from "@/lib/queries";
+import { getSubscriptionDetail, listPeople, listServices } from "@/lib/queries";
+import { SubscriptionRowActions } from "@/components/SubscriptionActions";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge, Pill } from "@/components/StatusBadge";
 import { Card, TableWrap, Th, Td, EmptyState, ServiceMark } from "@/components/ui";
@@ -35,6 +36,15 @@ export default async function SubscriptionDetailPage({
   const { subscription: sub, payments } = detail;
   const personName = sub.person ? `${sub.person.firstName} ${sub.person.lastName}` : "Persona rimossa";
 
+  const [people, services] = await Promise.all([listPeople(), listServices()]);
+  const peopleOptions = people.map((person) => ({
+    _id: String(person._id),
+    firstName: person.firstName,
+    lastName: person.lastName,
+    email: person.email,
+  }));
+  const serviceOptions = services.map((item) => ({ _id: String(item._id), name: item.name }));
+
   return (
     <div className="space-y-8">
       <div>
@@ -49,7 +59,30 @@ export default async function SubscriptionDetailPage({
       <PageHeader
         title={personName}
         description={sub.person?.email}
-        action={<StatusBadge status={sub.computed.status} />}
+        action={
+          <div className="flex items-center gap-3">
+            <StatusBadge status={sub.computed.status} />
+            <SubscriptionRowActions
+              subscription={{
+                _id: String(sub._id),
+                person: sub.person ? String(sub.person._id) : "",
+                personLabel: personName,
+                service: sub.service ? String(sub.service._id) : "",
+                serviceLabel: sub.service?.name ?? "Servizio rimosso",
+                periodicity: sub.periodicity,
+                donationSupplement: sub.donationSupplement,
+                onboardingStatus: sub.onboardingStatus,
+                startDate: sub.startDate
+                  ? new Date(sub.startDate).toISOString().slice(0, 10)
+                  : "",
+                notes: sub.notes ?? "",
+              }}
+              people={peopleOptions}
+              services={serviceOptions}
+              redirectOnDeleteTo="/abbonamenti"
+            />
+          </div>
+        }
       />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
