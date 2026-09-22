@@ -4,13 +4,14 @@ import { subscriptionCreateSchema } from "@/lib/validation";
 import { ok, handleError, parseBody } from "@/lib/api";
 import { listSubscriptions } from "@/lib/queries";
 import type { PaymentStatus } from "@/lib/billing";
+import { withAdmin } from "@/lib/requireAdmin";
 
 /**
  * GET /api/subscriptions — elenco abbonamenti (persona × servizio) arricchito
  * con quota, totale dovuto, prossima scadenza e stato calcolati.
  * Filtri: ?status=in_ritardo&person=<id>&service=<id>
  */
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status") as PaymentStatus | null;
@@ -32,7 +33,7 @@ export async function GET(request: Request) {
 }
 
 /** POST /api/subscriptions — crea un abbonamento persona × servizio. */
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   try {
     await connectToDatabase();
     const { data, error } = await parseBody(request, subscriptionCreateSchema);
@@ -44,3 +45,6 @@ export async function POST(request: Request) {
     return handleError(err);
   }
 }
+
+export const GET = withAdmin(handleGET);
+export const POST = withAdmin(handlePOST);

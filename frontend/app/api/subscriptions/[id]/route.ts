@@ -6,11 +6,12 @@ import { Service } from "@/models/Service";
 import { subscriptionUpdateSchema } from "@/lib/validation";
 import { ok, fail, handleError, parseBody } from "@/lib/api";
 import { computeSubscription } from "@/lib/billing";
+import { withAdmin } from "@/lib/requireAdmin";
 
 type Context = { params: Promise<{ id: string }> };
 
 /** GET /api/subscriptions/:id — dettaglio con calcoli e storico pagamenti. */
-export async function GET(_request: Request, { params }: Context) {
+async function handleGET(_request: Request, { params }: Context) {
   try {
     await connectToDatabase();
     void Person;
@@ -41,7 +42,7 @@ export async function GET(_request: Request, { params }: Context) {
   }
 }
 
-export async function PATCH(request: Request, { params }: Context) {
+async function handlePATCH(request: Request, { params }: Context) {
   try {
     await connectToDatabase();
     const { id } = await params;
@@ -60,7 +61,7 @@ export async function PATCH(request: Request, { params }: Context) {
 }
 
 /** Elimina l'abbonamento e il suo storico pagamenti. */
-export async function DELETE(_request: Request, { params }: Context) {
+async function handleDELETE(_request: Request, { params }: Context) {
   try {
     await connectToDatabase();
     const { id } = await params;
@@ -74,3 +75,7 @@ export async function DELETE(_request: Request, { params }: Context) {
     return handleError(err);
   }
 }
+
+export const GET = withAdmin(handleGET);
+export const PATCH = withAdmin(handlePATCH);
+export const DELETE = withAdmin(handleDELETE);

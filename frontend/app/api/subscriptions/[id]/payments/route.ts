@@ -4,11 +4,12 @@ import { Payment } from "@/models/Payment";
 import { paymentCreateSchema } from "@/lib/validation";
 import { ok, fail, handleError, parseBody } from "@/lib/api";
 import { coveredPeriod, totalDue } from "@/lib/billing";
+import { withAdmin } from "@/lib/requireAdmin";
 
 type Context = { params: Promise<{ id: string }> };
 
 /** GET /api/subscriptions/:id/payments — storico pagamenti dell'abbonamento. */
-export async function GET(_request: Request, { params }: Context) {
+async function handleGET(_request: Request, { params }: Context) {
   try {
     await connectToDatabase();
     const { id } = await params;
@@ -25,7 +26,7 @@ export async function GET(_request: Request, { params }: Context) {
  * la prossima scadenza. Importo e donazione, se omessi, si calcolano dalla
  * tariffa del servizio e dal supplemento configurato.
  */
-export async function POST(request: Request, { params }: Context) {
+async function handlePOST(request: Request, { params }: Context) {
   try {
     await connectToDatabase();
     const { id } = await params;
@@ -84,3 +85,6 @@ export async function POST(request: Request, { params }: Context) {
     return handleError(err);
   }
 }
+
+export const GET = withAdmin(handleGET);
+export const POST = withAdmin(handlePOST);

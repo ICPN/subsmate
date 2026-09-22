@@ -2,9 +2,10 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { Service } from "@/models/Service";
 import { serviceCreateSchema } from "@/lib/validation";
 import { ok, handleError, parseBody } from "@/lib/api";
+import { withAdmin } from "@/lib/requireAdmin";
 
 /** GET /api/services — elenco servizi (Claude, ChatGPT, ...). */
-export async function GET() {
+async function handleGET() {
   try {
     await connectToDatabase();
     const services = await Service.find().sort({ name: 1 }).lean();
@@ -15,7 +16,7 @@ export async function GET() {
 }
 
 /** POST /api/services — crea un servizio. Lo slug si deriva dal nome se omesso. */
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   try {
     await connectToDatabase();
     const { data, error } = await parseBody(request, serviceCreateSchema);
@@ -28,6 +29,9 @@ export async function POST(request: Request) {
     return handleError(err);
   }
 }
+
+export const GET = withAdmin(handleGET);
+export const POST = withAdmin(handlePOST);
 
 function slugify(value: string): string {
   return value

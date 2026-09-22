@@ -2,9 +2,10 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { Person } from "@/models/Person";
 import { personCreateSchema } from "@/lib/validation";
 import { ok, handleError, parseBody } from "@/lib/api";
+import { withAdmin } from "@/lib/requireAdmin";
 
 /** GET /api/people — elenco persone del team, con ricerca testuale opzionale. */
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   try {
     await connectToDatabase();
     const { searchParams } = new URL(request.url);
@@ -27,7 +28,7 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   try {
     await connectToDatabase();
     const { data, error } = await parseBody(request, personCreateSchema);
@@ -39,3 +40,6 @@ export async function POST(request: Request) {
     return handleError(err);
   }
 }
+
+export const GET = withAdmin(handleGET);
+export const POST = withAdmin(handlePOST);
