@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Card, TableWrap, Th, Td, EmptyState, ServiceMark } from "@/components/ui";
 import { Pill } from "@/components/StatusBadge";
 import { formatEUR } from "@/lib/billing";
+import { NewServiceButton, ServiceRowActions } from "@/components/ServiceActions";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,7 @@ export default async function ServicesPage() {
       <PageHeader
         title="Servizi"
         description="Tariffe dei servizi LLM. Aggiungere un servizio non richiede modifiche al codice: è un record in più."
+        action={<NewServiceButton />}
       />
 
       <Card title="Elenco">
@@ -49,6 +51,7 @@ export default async function ServicesPage() {
                   <Th align="right">Abbonati attivi</Th>
                   <Th align="right">Quote per ciclo</Th>
                   <Th>Stato</Th>
+                  <Th align="right">Azioni</Th>
                 </tr>
               </thead>
               <tbody>
@@ -79,6 +82,18 @@ export default async function ServicesPage() {
                       </Td>
                       <Td>
                         <Pill>{service.active ? "Attivo" : "Disattivato"}</Pill>
+                      </Td>
+                      <Td align="right">
+                        <ServiceRowActions
+                          service={{
+                            _id: String(service._id),
+                            name: service.name,
+                            monthlyRate: service.monthlyRate,
+                            billingDayOfMonth: service.billingDayOfMonth ?? 1,
+                            active: service.active ?? true,
+                            notes: service.notes ?? "",
+                          }}
+                        />
                       </Td>
                     </tr>
                   );
