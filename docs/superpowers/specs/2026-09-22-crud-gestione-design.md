@@ -88,7 +88,7 @@ libreria esterna.
 | File | Contenuto |
 |---|---|
 | `frontend/components/Modal.tsx` | `Modal`, gestione focus/`Esc`/backdrop, variante bottom-sheet via CSS |
-| `frontend/components/ConfirmDialog.tsx` | Costruito su `Modal`; props `title`, `message` (`ReactNode`, per poter includere numeri calcolati tipo "3 pagamenti, 90,00 €"), `confirmLabel`, `onConfirm`, `danger` (colora il bottone di conferma con lo stato critico) |
+| `frontend/components/ConfirmDialog.tsx` | Costruito su `Modal`; props `title`, `message` (`ReactNode`, per poter includere numeri calcolati tipo "3 pagamenti, 90,00 €"), `confirmLabel`, `onConfirm`. Nessun prop `danger`: colorare il bottone di conferma con lo stato critico violerebbe il vincolo "i colori di stato non vanno mai riusati per bottoni" già scritto in questo stesso documento — il rischio si comunica solo nel testo di `message` |
 | `frontend/components/Toast.tsx` | `ToastProvider` + hook `useToast()`; una sola notifica visibile alla volta, auto-dismiss dopo qualche secondo |
 | `frontend/components/form.tsx` | `Field`, `TextInput`, `NumberInput`, `Select`, `Textarea`, `inputClass` — estratti da `RegisterPaymentForm` (che oggi li definisce localmente) per essere condivisi da tutti i nuovi form. Piccolo refactor mirato: `RegisterPaymentForm` passa a importarli da qui invece di duplicarli nei 4 form nuovi |
 | `frontend/components/PersonForm.tsx` | Form create/edit Persona, dentro un `Modal` |
