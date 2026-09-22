@@ -89,6 +89,12 @@ python execution/seed_services.py         # crea Claude e ChatGPT
 python execution/seed_demo_data.py        # dati di prova per verificare la UI
 ```
 
+Creare il primo admin (genera anche `AUTH_SECRET`):
+
+```bash
+python execution/seed_admin.py --email "tua@email.it" --name "Nome Cognome"
+```
+
 > **Nota rete:** la porta 27017 è bloccata in uscita sulla rete ICPN, quindi MongoDB Atlas
 > non è raggiungibile dalle postazioni interne. Lo sviluppo avviene su MongoDB Community
 > locale; `frontend/.env.local` contiene entrambe le URI, con quella Atlas commentata.
@@ -103,6 +109,6 @@ Procedura completa in [directives/setup_ambiente.md](directives/setup_ambiente.m
 - [x] Direttive e script di import
 - [x] UI — dashboard, abbonamenti (con filtri), scheda abbonamento con registrazione pagamento, persone, servizi, pagamenti
 - [x] Verifica end-to-end su MongoDB locale: registrazione pagamento, ricalcolo di scadenza e stato
-- [ ] Autenticazione admin (modello `AdminUser` pronto, flusso di login da implementare)
+- [x] Autenticazione admin (login email + password, sessione 7 giorni, blocco dopo 5 tentativi)
 - [ ] Import reale dal Google Sheet
 - [ ] Connessione ad Atlas (bloccata dalla rete, non dal codice)

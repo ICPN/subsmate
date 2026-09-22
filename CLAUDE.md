@@ -74,6 +74,25 @@ indice unico: una persona può averne più di uno contemporaneamente.
 Aggiungere un servizio LLM è un documento in più, non una modifica di schema — è un
 requisito esplicito di `PROJECT.md`, non romperlo con enum hard-coded.
 
+## Autenticazione
+
+Due livelli, non ridondanti: `middleware.ts` gira in **Edge** e verifica solo la firma del
+cookie; `requireAdmin()` / `withAdmin()` (in `lib/requireAdmin.ts`) girano in **Node** e
+fanno il controllo autorevole su database (admin attivo, password non cambiata dopo
+l'emissione del token). Il middleware non può interrogare Mongo da Edge, quindi non è
+sufficiente da solo.
+
+- `lib/session-token.ts` contiene **solo** jose (firma/verifica JWT) ed è l'unico modulo
+  auth importabile dal middleware. Non importarci `bcryptjs`: finirebbe nel bundle Edge.
+- `lib/auth.ts` contiene **solo** `verifyPassword()` con bcryptjs: gira in Node (route
+  `app/api/auth/login`), mai nel middleware.
+- Header e footer stanno in `app/(protected)/layout.tsx`, non nel root layout: la pagina
+  `/login` (fuori dal gruppo protetto) non li mostra.
+- Ogni nuova route sotto `app/api/` va esportata avvolta in `withAdmin()`. Verifica con:
+  `grep -rLn "withAdmin" app/api --include=route.ts | grep -v auth/` — non deve stampare nulla.
+- Gli account si creano solo con `python execution/seed_admin.py`. Non esistono registrazione,
+  inviti o reset self-service, ed è una scelta: vedi la spec in `docs/superpowers/specs/`.
+
 ## Ambiente: MongoDB Atlas non è raggiungibile
 
 La rete ICPN blocca la porta 27017 in uscita, verso qualsiasi host. Lo sviluppo avviene su
