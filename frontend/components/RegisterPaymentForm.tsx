@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { buttonPrimary } from "@/components/ui";
+import { Field, TextInput, Select, ErrorMessage } from "@/components/form";
 
 /**
  * Form di registrazione pagamento.
@@ -66,94 +67,59 @@ export function RegisterPaymentForm({
     <form onSubmit={handleSubmit} className="space-y-4 px-5 py-5">
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Importo incassato" hint="Precompilato con il totale dovuto">
-          <input
+          <TextInput
             type="number"
             name="amount"
             step="0.01"
             min="0"
             defaultValue={defaultAmount}
             required
-            className={inputClass}
           />
         </Field>
 
         <Field label="di cui donazione">
-          <input
+          <TextInput
             type="number"
             name="donationAmount"
             step="0.01"
             min="0"
             defaultValue={defaultDonation}
-            className={inputClass}
           />
         </Field>
 
         <Field label="Data del pagamento">
-          <input
+          <TextInput
             type="date"
             name="paidAt"
             defaultValue={new Date().toISOString().slice(0, 10)}
             required
-            className={inputClass}
           />
         </Field>
 
         <Field label="Metodo">
-          <select name="method" defaultValue="bonifico" className={inputClass}>
+          <Select name="method" defaultValue="bonifico">
             {METHODS.map((method) => (
               <option key={method.value} value={method.value}>
                 {method.label}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
 
         <Field label="Riferimento" hint="Numero CRO, ID transazione">
-          <input type="text" name="reference" className={inputClass} />
+          <TextInput type="text" name="reference" />
         </Field>
 
         <Field label="Note">
-          <input type="text" name="notes" className={inputClass} />
+          <TextInput type="text" name="notes" />
         </Field>
       </div>
 
-      {error ? (
-        <p
-          role="alert"
-          className="rounded-[var(--radius)] px-3 py-2 text-sm"
-          style={{
-            color: "var(--status-critical)",
-            backgroundColor: "color-mix(in srgb, var(--status-critical) 12%, transparent)",
-          }}
-        >
-          {error}
-        </p>
-      ) : null}
+      {error ? <ErrorMessage>{error}</ErrorMessage> : null}
 
       <button type="submit" disabled={pending} className={buttonPrimary}>
         {pending ? "Registrazione in corso" : "Registra pagamento"}
       </button>
     </form>
-  );
-}
-
-const inputClass =
-  "w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--paper)] px-3 py-2 text-sm text-[var(--ink-navy)]";
-
-function Field({
-  label,
-  hint,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="block">
-      <span className="mb-1 block text-xs font-medium text-[var(--ink-muted)]">{label}</span>
-      {children}
-      {hint ? <span className="mt-1 block text-xs text-[var(--ink-muted)]">{hint}</span> : null}
-    </label>
   );
 }
