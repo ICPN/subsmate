@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 /** Header a tutta larghezza in Ink Navy, come nel riferimento ICPN (§5). */
 
@@ -15,6 +15,7 @@ const LINKS = [
 
 export function Header() {
   const pathname = usePathname();
+  const router = useRouter();
 
   return (
     <header className="bg-[var(--ink-navy)] text-white">
@@ -50,7 +51,17 @@ export function Header() {
           </ul>
         </nav>
 
-        <span className="text-xs text-white/60">Area amministratori</span>
+        <button
+          type="button"
+          onClick={async () => {
+            await fetch("/api/auth/logout", { method: "POST" });
+            router.replace("/login");
+            router.refresh();
+          }}
+          className="text-xs text-white/60 transition-colors hover:text-white"
+        >
+          Esci
+        </button>
       </div>
     </header>
   );
