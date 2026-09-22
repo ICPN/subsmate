@@ -79,7 +79,7 @@ async function handleDELETE(_request: Request, { params }: Context) {
     const subs = await Subscription.countDocuments({ person: id });
     if (subs > 0) {
       return fail(
-        `Impossibile eliminare: la persona ha ${subs} abbonamenti. Disattivala invece.`,
+        `Impossibile eliminare: la persona ha ${subs} ${subs === 1 ? "abbonamento" : "abbonamenti"}. Disattivala invece.`,
         409
       );
     }

@@ -131,8 +131,14 @@ export default async function SubscriptionDetailPage({
         >
           {payments.length === 0 ? (
             <EmptyState title="Nessun pagamento registrato">
-              Registra il primo pagamento: l&apos;abbonamento passerà da
-              &laquo;{ONBOARDING_LABELS[sub.onboardingStatus]}&raquo; ad &laquo;Attivo&raquo;.
+              {sub.onboardingStatus === "attivo"
+                ? "Nessun pagamento ancora registrato per questo abbonamento."
+                : (
+                  <>
+                    Registra il primo pagamento: l&apos;abbonamento passerà da
+                    &laquo;{ONBOARDING_LABELS[sub.onboardingStatus]}&raquo; ad &laquo;Attivo&raquo;.
+                  </>
+                )}
             </EmptyState>
           ) : (
             <TableWrap>
