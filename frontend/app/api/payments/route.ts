@@ -2,12 +2,13 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { Payment } from "@/models/Payment";
 import { Person } from "@/models/Person";
 import { ok, handleError } from "@/lib/api";
+import { withAdmin } from "@/lib/requireAdmin";
 
 /**
  * GET /api/payments — storico pagamenti globale.
  * Filtri: ?person=<id>&from=<ISO>&to=<ISO>&limit=<n>
  */
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   try {
     await connectToDatabase();
     void Person;
@@ -38,3 +39,5 @@ export async function GET(request: Request) {
     return handleError(err);
   }
 }
+
+export const GET = withAdmin(handleGET);

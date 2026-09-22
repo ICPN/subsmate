@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { requireAdmin } from "@/lib/requireAdmin";
 import { listSubscriptions, listServices } from "@/lib/queries";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge, Pill } from "@/components/StatusBadge";
@@ -25,6 +26,7 @@ export default async function SubscriptionsPage({
 }: {
   searchParams: Promise<{ status?: string; service?: string }>;
 }) {
+  await requireAdmin("/abbonamenti");
   const { status, service } = await searchParams;
   const [allSubscriptions, services] = await Promise.all([
     listSubscriptions(service ? { service } : {}),

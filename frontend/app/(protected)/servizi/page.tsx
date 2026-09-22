@@ -1,3 +1,4 @@
+import { requireAdmin } from "@/lib/requireAdmin";
 import { listServices, listSubscriptions } from "@/lib/queries";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, TableWrap, Th, Td, EmptyState, ServiceMark } from "@/components/ui";
@@ -7,6 +8,7 @@ import { formatEUR } from "@/lib/billing";
 export const dynamic = "force-dynamic";
 
 export default async function ServicesPage() {
+  await requireAdmin("/servizi");
   const [services, subscriptions] = await Promise.all([listServices(), listSubscriptions()]);
 
   // Quanti abbonati e quanto incassa ogni servizio per ciclo.

@@ -19,19 +19,26 @@ Contesto e scope: [PROJECT.md](PROJECT.md) · Convenzioni di lavoro: [AGENT.md](
 subsmate/
 ├── frontend/              # App Next.js (UI + API routes)
 │   ├── app/
-│   │   ├── api/           # Route handler REST
-│   │   ├── abbonamenti/   # elenco con filtri + scheda con storico
-│   │   ├── persone/ servizi/ pagamenti/
-│   │   ├── layout.tsx     # header/footer navy, font Manrope + Inter
-│   │   └── page.tsx       # dashboard
+│   │   ├── api/           # Route handler REST, avvolti in withAdmin()
+│   │   ├── (protected)/   # route group con guardia admin
+│   │   │   ├── abbonamenti/   # elenco con filtri + scheda con storico
+│   │   │   ├── persone/ servizi/ pagamenti/
+│   │   │   ├── layout.tsx     # header/footer navy, font Manrope + Inter
+│   │   │   └── page.tsx       # dashboard
+│   │   ├── login/         # pagina di login, fuori dal gruppo protetto
+│   │   └── layout.tsx     # root layout (nessun header/footer qui)
+│   ├── middleware.ts      # Edge: verifica solo la firma del cookie di sessione
 │   ├── lib/
-│   │   ├── mongodb.ts     # connessione con cache globale
-│   │   ├── billing.ts     # motore di calcolo (quote, scadenze, stato)
-│   │   ├── queries.ts     # letture condivise API/pagine
-│   │   ├── validation.ts  # schemi Zod di input
-│   │   └── api.ts         # risposte e gestione errori uniformi
+│   │   ├── mongodb.ts       # connessione con cache globale
+│   │   ├── billing.ts       # motore di calcolo (quote, scadenze, stato)
+│   │   ├── queries.ts       # letture condivise API/pagine
+│   │   ├── validation.ts    # schemi Zod di input
+│   │   ├── api.ts           # risposte e gestione errori uniformi
+│   │   ├── auth.ts          # verifyPassword() con bcryptjs (solo Node)
+│   │   ├── session-token.ts # firma/verifica JWT con jose (Edge + Node)
+│   │   └── requireAdmin.ts  # controllo autorevole su DB (Node): requireAdmin()/withAdmin()
 │   ├── components/        # primitive UI (card, tabella, badge di stato)
-│   └── models/            # schemi Mongoose
+│   └── models/            # schemi Mongoose (incluso AdminUser)
 ├── directives/            # SOP in Markdown (livello 1)
 ├── execution/             # script Python deterministici (livello 3)
 ├── .tmp/                  # file intermedi, mai committati
@@ -89,6 +96,12 @@ python execution/seed_services.py         # crea Claude e ChatGPT
 python execution/seed_demo_data.py        # dati di prova per verificare la UI
 ```
 
+Creare il primo admin (genera anche `AUTH_SECRET`):
+
+```bash
+python execution/seed_admin.py --email "tua@email.it" --name "Nome Cognome"
+```
+
 > **Nota rete:** la porta 27017 è bloccata in uscita sulla rete ICPN, quindi MongoDB Atlas
 > non è raggiungibile dalle postazioni interne. Lo sviluppo avviene su MongoDB Community
 > locale; `frontend/.env.local` contiene entrambe le URI, con quella Atlas commentata.
@@ -103,6 +116,6 @@ Procedura completa in [directives/setup_ambiente.md](directives/setup_ambiente.m
 - [x] Direttive e script di import
 - [x] UI — dashboard, abbonamenti (con filtri), scheda abbonamento con registrazione pagamento, persone, servizi, pagamenti
 - [x] Verifica end-to-end su MongoDB locale: registrazione pagamento, ricalcolo di scadenza e stato
-- [ ] Autenticazione admin (modello `AdminUser` pronto, flusso di login da implementare)
+- [x] Autenticazione admin (login email + password, sessione 7 giorni, blocco dopo 5 tentativi)
 - [ ] Import reale dal Google Sheet
 - [ ] Connessione ad Atlas (bloccata dalla rete, non dal codice)

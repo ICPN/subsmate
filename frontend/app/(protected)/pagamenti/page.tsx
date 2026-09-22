@@ -1,3 +1,4 @@
+import { requireAdmin } from "@/lib/requireAdmin";
 import { listPayments } from "@/lib/queries";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, TableWrap, Th, Td, EmptyState, StatCard } from "@/components/ui";
@@ -7,6 +8,7 @@ import { formatEUR, formatDate } from "@/lib/billing";
 export const dynamic = "force-dynamic";
 
 export default async function PaymentsPage() {
+  await requireAdmin("/pagamenti");
   const payments = await listPayments(100);
 
   const collected = payments.reduce((sum, payment) => sum + payment.amount, 0);

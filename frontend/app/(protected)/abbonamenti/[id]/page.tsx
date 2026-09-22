@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { requireAdmin } from "@/lib/requireAdmin";
 import { getSubscriptionDetail } from "@/lib/queries";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge, Pill } from "@/components/StatusBadge";
@@ -27,6 +28,7 @@ export default async function SubscriptionDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  await requireAdmin(`/abbonamenti/${id}`);
   const detail = await getSubscriptionDetail(id);
   if (!detail) notFound();
 
