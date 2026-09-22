@@ -3,11 +3,11 @@
   "email": ["Email", "Email Address", "Indirizzo email"],
   "firstName": ["Nome", "First Name"],
   "lastName": ["Cognome", "Last Name"],
-  "service": ["Servizio", "Service", "Piano", "Plan"],
+  "service": ["Servizio", "Service", "LLM", "AI"],
   "periodicity": ["Periodicità", "Periodicita", "Frequenza", "Billing"],
-  "donationSupplement": ["Donazione", "Supplemento", "Donation"],
+  "donationSupplement": ["Donazione", "Supplemento", "Donation", "Donazione (€)"],
   "lastPaymentDate": ["Ultimo pagamento", "Data ultimo pagamento", "Last Payment"],
-  "amount": ["Importo", "Quota", "Amount"],
+  "amount": ["Importo", "Quota", "Amount", "Ricevuto storico (€)"],
   "notes": ["Note", "Notes"],
   "_valori": {
     "periodicity": {

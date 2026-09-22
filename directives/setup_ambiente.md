@@ -56,6 +56,14 @@ postazioni interne**. Si sviluppa su MongoDB Community installato in locale:
   al messaggio "TLS fallito" e non modificare Atlas prima di aver letto il verdetto.
   Nota: l'IP di uscita su 443 può differire da quello su altre porte dietro proxy aziendale,
   quindi l'IP restituito da ipify non è necessariamente quello che Atlas vede.
+- **`check_db_connection.py` dà un falso "PORTA 27017 BLOCCATA" anche con `MONGODB_URI` locale
+  (verificato 22/09/2026).** Lo script è pensato per Atlas e tenta sempre l'handshake TLS,
+  indipendentemente dall'host: contro `mongodb://127.0.0.1:27017` (MongoDB Community locale,
+  senza TLS) il passo 3 fallisce sempre, e la sonda su `portquiz.net` che segue non ha alcun
+  rapporto con la raggiungibilità del Mongo locale. Se `MONGODB_URI` punta a `127.0.0.1` e il
+  servizio Windows `MongoDB` risulta `Running` (`Get-Service MongoDB`), non fidarsi del verdetto
+  dello script: verificare con una query diretta, es.
+  `python -c "from execution.db import get_db; print(get_db().list_collection_names())"`.
 - **Errore di autenticazione dopo che il TLS passa**: utente o password sbagliati, oppure
   all'utente del database non è stato dato il ruolo di lettura/scrittura su `subsmate`.
 - **Piano free in pausa**: dopo inattività prolungata il cluster si sospende e la prima
