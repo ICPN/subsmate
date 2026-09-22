@@ -3,6 +3,7 @@ import { listPayments } from "@/lib/queries";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, TableWrap, Th, Td, EmptyState, StatCard } from "@/components/ui";
 import { Pill } from "@/components/StatusBadge";
+import { PaymentRowActions } from "@/components/PaymentRowActions";
 import { formatEUR, formatDate } from "@/lib/billing";
 
 export const dynamic = "force-dynamic";
@@ -50,6 +51,7 @@ export default async function PaymentsPage() {
                   <Th>Metodo</Th>
                   <Th>Periodo coperto</Th>
                   <Th>Riferimento</Th>
+                  <Th align="right">Azioni</Th>
                 </tr>
               </thead>
               <tbody>
@@ -84,6 +86,14 @@ export default async function PaymentsPage() {
                         {formatDate(payment.periodStart)} – {formatDate(payment.periodEnd)}
                       </Td>
                       <Td className="text-[var(--ink-muted)]">{payment.reference || "—"}</Td>
+                      <Td align="right">
+                        <PaymentRowActions
+                          subscriptionId={String(payment.subscription)}
+                          paymentId={String(payment._id)}
+                          amount={payment.amount}
+                          paidAt={new Date(payment.paidAt).toISOString()}
+                        />
+                      </Td>
                     </tr>
                   );
                 })}

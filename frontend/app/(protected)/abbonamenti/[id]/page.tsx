@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge, Pill } from "@/components/StatusBadge";
 import { Card, TableWrap, Th, Td, EmptyState, ServiceMark } from "@/components/ui";
 import { RegisterPaymentForm } from "@/components/RegisterPaymentForm";
+import { PaymentRowActions } from "@/components/PaymentRowActions";
 import { formatEUR, formatDate, statusDetail } from "@/lib/billing";
 
 export const dynamic = "force-dynamic";
@@ -143,6 +144,7 @@ export default async function SubscriptionDetailPage({
                     <Th align="right">Donazione</Th>
                     <Th>Metodo</Th>
                     <Th>Periodo coperto</Th>
+                    <Th align="right">Azioni</Th>
                   </tr>
                 </thead>
                 <tbody>
@@ -163,6 +165,14 @@ export default async function SubscriptionDetailPage({
                       </Td>
                       <Td className="tnum text-[var(--ink-muted)]">
                         {formatDate(payment.periodStart)} – {formatDate(payment.periodEnd)}
+                      </Td>
+                      <Td align="right">
+                        <PaymentRowActions
+                          subscriptionId={String(sub._id)}
+                          paymentId={String(payment._id)}
+                          amount={payment.amount}
+                          paidAt={new Date(payment.paidAt).toISOString()}
+                        />
                       </Td>
                     </tr>
                   ))}
