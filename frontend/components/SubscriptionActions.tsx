@@ -73,24 +73,37 @@ export function SubscriptionRowActions({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmMessage, setConfirmMessage] = useState("");
   const [confirmLoading, setConfirmLoading] = useState(false);
+  const [confirmError, setConfirmError] = useState(false);
   const router = useRouter();
   const showToast = useToast();
 
   async function openConfirm() {
     setConfirmLoading(true);
+    setConfirmError(false);
     setConfirmOpen(true);
-    const response = await fetch(`/api/subscriptions/${subscription._id}`);
-    const body = await response.json().catch(() => null);
-    const payments = (body?.data?.payments ?? []) as { amount: number }[];
-    const total = payments.reduce((sum, payment) => sum + payment.amount, 0);
-    setConfirmMessage(
-      payments.length > 0
-        ? `Verranno eliminati anche ${payments.length} ${
-            payments.length === 1 ? "pagamento registrato" : "pagamenti registrati"
-          }, totale storico ${formatEUR(total)}.`
-        : "Non ha pagamenti registrati."
-    );
-    setConfirmLoading(false);
+    try {
+      const response = await fetch(`/api/subscriptions/${subscription._id}`);
+      if (!response.ok) {
+        setConfirmError(true);
+        setConfirmMessage("Impossibile verificare lo storico pagamenti. Riprova.");
+        return;
+      }
+      const body = await response.json().catch(() => null);
+      const payments = (body?.data?.payments ?? []) as { amount: number }[];
+      const total = payments.reduce((sum, payment) => sum + payment.amount, 0);
+      setConfirmMessage(
+        payments.length > 0
+          ? `Verranno eliminati anche ${payments.length} ${
+              payments.length === 1 ? "pagamento registrato" : "pagamenti registrati"
+            }, totale storico ${formatEUR(total)}.`
+          : "Non ha pagamenti registrati."
+      );
+    } catch {
+      setConfirmError(true);
+      setConfirmMessage("Impossibile verificare lo storico pagamenti. Riprova.");
+    } finally {
+      setConfirmLoading(false);
+    }
   }
 
   async function handleDelete() {
@@ -136,7 +149,7 @@ export function SubscriptionRowActions({
         title="Eliminare l'abbonamento?"
         message={confirmLoading ? "Verifica dello storico pagamenti…" : confirmMessage}
         confirmLabel="Elimina abbonamento"
-        confirmDisabled={confirmLoading}
+        confirmDisabled={confirmLoading || confirmError}
         onConfirm={handleDelete}
       />
     </div>
