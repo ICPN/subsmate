@@ -13,6 +13,9 @@ next-env.d.ts
 .tmp/
 !.tmp/.gitkeep
 
+# Directory di lavoro locale (contiene note di sessione, anche con credenziali di prova)
+.superpowers/
+
 # Ambiente e segreti
 .env
 .env.local

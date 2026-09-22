@@ -90,6 +90,12 @@ sufficiente da solo.
   `/login` (fuori dal gruppo protetto) non li mostra.
 - Ogni nuova route sotto `app/api/` va esportata avvolta in `withAdmin()`. Verifica con:
   `grep -rLn "withAdmin" app/api --include=route.ts | grep -v auth/` — non deve stampare nulla.
+- Ogni pagina sotto `app/(protected)/` deve chiamare `await requireAdmin(<percorso>)` come
+  prima istruzione della funzione, non solo il layout: durante una navigazione soft (partial
+  rendering) Next.js **non riesegue** il layout del route group condiviso fra due pagine, quindi
+  il solo controllo in `app/(protected)/layout.tsx` non basta a revocare una sessione firmata
+  ma non più autorizzata (admin disattivato, cancellato, password cambiata). Verifica con:
+  `grep -rL "requireAdmin" "app/(protected)" --include=page.tsx` — non deve stampare nulla.
 - Gli account si creano solo con `python execution/seed_admin.py`. Non esistono registrazione,
   inviti o reset self-service, ed è una scelta: vedi la spec in `docs/superpowers/specs/`.
 

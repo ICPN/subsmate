@@ -19,19 +19,26 @@ Contesto e scope: [PROJECT.md](PROJECT.md) · Convenzioni di lavoro: [AGENT.md](
 subsmate/
 ├── frontend/              # App Next.js (UI + API routes)
 │   ├── app/
-│   │   ├── api/           # Route handler REST
-│   │   ├── abbonamenti/   # elenco con filtri + scheda con storico
-│   │   ├── persone/ servizi/ pagamenti/
-│   │   ├── layout.tsx     # header/footer navy, font Manrope + Inter
-│   │   └── page.tsx       # dashboard
+│   │   ├── api/           # Route handler REST, avvolti in withAdmin()
+│   │   ├── (protected)/   # route group con guardia admin
+│   │   │   ├── abbonamenti/   # elenco con filtri + scheda con storico
+│   │   │   ├── persone/ servizi/ pagamenti/
+│   │   │   ├── layout.tsx     # header/footer navy, font Manrope + Inter
+│   │   │   └── page.tsx       # dashboard
+│   │   ├── login/         # pagina di login, fuori dal gruppo protetto
+│   │   └── layout.tsx     # root layout (nessun header/footer qui)
+│   ├── middleware.ts      # Edge: verifica solo la firma del cookie di sessione
 │   ├── lib/
-│   │   ├── mongodb.ts     # connessione con cache globale
-│   │   ├── billing.ts     # motore di calcolo (quote, scadenze, stato)
-│   │   ├── queries.ts     # letture condivise API/pagine
-│   │   ├── validation.ts  # schemi Zod di input
-│   │   └── api.ts         # risposte e gestione errori uniformi
+│   │   ├── mongodb.ts       # connessione con cache globale
+│   │   ├── billing.ts       # motore di calcolo (quote, scadenze, stato)
+│   │   ├── queries.ts       # letture condivise API/pagine
+│   │   ├── validation.ts    # schemi Zod di input
+│   │   ├── api.ts           # risposte e gestione errori uniformi
+│   │   ├── auth.ts          # verifyPassword() con bcryptjs (solo Node)
+│   │   ├── session-token.ts # firma/verifica JWT con jose (Edge + Node)
+│   │   └── requireAdmin.ts  # controllo autorevole su DB (Node): requireAdmin()/withAdmin()
 │   ├── components/        # primitive UI (card, tabella, badge di stato)
-│   └── models/            # schemi Mongoose
+│   └── models/            # schemi Mongoose (incluso AdminUser)
 ├── directives/            # SOP in Markdown (livello 1)
 ├── execution/             # script Python deterministici (livello 3)
 ├── .tmp/                  # file intermedi, mai committati

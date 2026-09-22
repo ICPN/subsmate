@@ -26,6 +26,12 @@ successiva. Non cancellare il documento: si perderebbe il riferimento storico.
   la leva da usare se si sospetta che un cookie sia stato esfiltrato.
 - **Account bloccato per tentativi falliti**: si sblocca da solo dopo 15 minuti, oppure
   azzerando `lockedUntil` e `failedLoginAttempts` sul documento.
+- **Tutti gli admin bloccati contemporaneamente**: il blocco dopo 5 tentativi falliti è per
+  account, non globale. Chi conosce gli indirizzi email degli admin — prevedibili
+  (`nome@icpn.it`) e già pubblici — può tenere bloccati **tutti** gli account con 5 tentativi
+  ogni 15 minuti ciascuno, negando l'accesso a chiunque. Non c'è un modo per sbloccarsi
+  dall'app in questo scenario: si esce direttamente dal database, azzerando `lockedUntil` e
+  `failedLoginAttempts` su tutti i documenti di `adminusers` (non solo su uno).
 - **Nessun admin in database**: ogni pagina reindirizza a `/login` e nessuna credenziale
   funziona. Si esce solo rieseguendo il seed.
 - **Admin locale con password di prova**: l'admin attualmente presente nel database
