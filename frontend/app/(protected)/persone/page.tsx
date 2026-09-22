@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Card, TableWrap, Th, Td, EmptyState, StatCard } from "@/components/ui";
 import { Pill } from "@/components/StatusBadge";
 import { formatEUR } from "@/lib/billing";
+import { NewPersonButton, PersonRowActions } from "@/components/PersonActions";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +38,7 @@ export default async function PeoplePage() {
       <PageHeader
         title="Persone"
         description="Membri del team e totale dovuto sommato su tutti i loro servizi."
+        action={<NewPersonButton />}
       />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -64,6 +66,7 @@ export default async function PeoplePage() {
                   <Th>Servizi</Th>
                   <Th align="right">Abbonamenti attivi</Th>
                   <Th align="right">Totale dovuto</Th>
+                  <Th align="right">Azioni</Th>
                 </tr>
               </thead>
               <tbody>
@@ -107,6 +110,18 @@ export default async function PeoplePage() {
                       </Td>
                       <Td align="right" className="tnum font-medium">
                         {formatEUR(agg.total)}
+                      </Td>
+                      <Td align="right">
+                        <PersonRowActions
+                          person={{
+                            _id: String(person._id),
+                            firstName: person.firstName,
+                            lastName: person.lastName,
+                            email: person.email,
+                            active: person.active ?? true,
+                            notes: person.notes ?? "",
+                          }}
+                        />
                       </Td>
                     </tr>
                   );
