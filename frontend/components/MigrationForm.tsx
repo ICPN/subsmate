@@ -6,7 +6,11 @@ import { Modal } from "@/components/Modal";
 import { useToast } from "@/components/Toast";
 import { buttonPrimary, buttonSecondary } from "@/components/ui";
 import { Field, TextInput, Select, ErrorMessage, submitJson } from "@/components/form";
-import { migrationBalance, type MigrationCloseOld } from "@/lib/migration";
+import {
+  effectiveDateFromInput,
+  migrationBalance,
+  type MigrationCloseOld,
+} from "@/lib/migration";
 import { formatEUR, toDateInputValue } from "@/lib/billing";
 import type { Periodicity } from "@/models/Subscription";
 
@@ -60,9 +64,9 @@ export function MigrationForm({
   const target = services.find((service) => service._id === toService);
   const balance = target
     ? migrationBalance({
-        // Mezzanotte locale: interpretare "2026-11-18" come UTC sposterebbe
-        // la data di un giorno e cambierebbe i mesi di credito.
-        effectiveDate: new Date(`${effectiveDate}T00:00:00`),
+        // Stessa costruzione che usera il server sulla stringa inviata:
+        // vedi effectiveDateFromInput.
+        effectiveDate: effectiveDateFromInput(effectiveDate),
         closeOld,
         oldNextDueDate: oldNextDueDate ? new Date(oldNextDueDate) : null,
         oldMonthlyRate,

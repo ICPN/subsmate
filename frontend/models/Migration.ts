@@ -38,6 +38,14 @@ const MigrationSchema = new Schema(
     },
     creditMonths: { type: Number, min: 0, default: null },
     creditMonthlyRate: { type: Number, min: 0, default: null },
+    /**
+     * Credito netto davvero riconosciuto. Non è ridondante rispetto ai due
+     * campi sopra: il credito è limitato a quanto era stato incassato sul
+     * vecchio ciclo, quindi mesi × tariffa ne è solo il massimo teorico. È un
+     * fatto congelato al momento dell'esecuzione, non un valore calcolabile:
+     * i dati da cui derivava cambiano appena il vecchio abbonamento cessa.
+     */
+    creditAmount: { type: Number, min: 0, default: null },
     notes: { type: String, trim: true, default: "" },
   },
   { timestamps: true }

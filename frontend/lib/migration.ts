@@ -28,6 +28,21 @@ function round2(value: number): number {
  * Mesi interi che separano due date. Il mese iniziato non conta: è la regola
  * del team, un mese cominciato è pagato e finisce lì.
  */
+/**
+ * Decorrenza a partire dal valore di un <input type="date"> ("2026-11-18").
+ *
+ * Esiste per un motivo solo: il form mostra un'anteprima del saldo calcolata
+ * nel browser, e il server ricalcola lo stesso saldo dalla stessa stringa con
+ * z.coerce.date(), che la legge come mezzanotte UTC. Costruendo la data a
+ * mezzanotte locale l'anteprima partiva da un istante diverso, e su una
+ * scadenza che non cade a mezzanotte i mesi di credito divergevano: l'admin
+ * vedeva un saldo che il server poi non applicava. Una sola funzione, così
+ * non possono più separarsi.
+ */
+export function effectiveDateFromInput(value: string): Date {
+  return new Date(`${value}T00:00:00Z`);
+}
+
 export function wholeMonthsBetween(from: Date, to: Date): number {
   if (to.getTime() <= from.getTime()) return 0;
   let months = 0;

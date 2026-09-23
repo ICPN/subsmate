@@ -234,13 +234,22 @@ export default async function SubscriptionDetailPage({
                         {payment.donationAmount ? formatEUR(payment.donationAmount) : "—"}
                       </Td>
                       <Td>
-                        <Pill>{payment.method}</Pill>
+                        {payment.kind === "credito_migrazione" ? (
+                          <Pill>Credito migrazione</Pill>
+                        ) : (
+                          <Pill>{payment.method}</Pill>
+                        )}
                       </Td>
                       <Td className="tnum text-[var(--ink-muted)]">
                         {formatDate(payment.periodStart)} – {formatDate(payment.periodEnd)}
                       </Td>
                       <Td align="right">
-                        <PaymentRowActions
+                        {/* Il credito non si modifica da qui: si disfa
+                            annullando la migrazione che lo ha generato. */}
+                        {payment.kind === "credito_migrazione" ? (
+                          <span className="text-xs text-[var(--ink-muted)]">—</span>
+                        ) : (
+                          <PaymentRowActions
                           subscriptionId={String(sub._id)}
                           payment={{
                             _id: String(payment._id),
@@ -251,7 +260,8 @@ export default async function SubscriptionDetailPage({
                             reference: payment.reference ?? "",
                             notes: payment.notes ?? "",
                           }}
-                        />
+                          />
+                        )}
                       </Td>
                     </tr>
                   ))}
