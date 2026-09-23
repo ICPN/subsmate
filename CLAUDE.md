@@ -65,6 +65,37 @@ Conseguenze pratiche:
 direttamente, le route handler la riusano. **Le pagine non chiamano le proprie API via
 HTTP.** Se aggiungi una lettura, mettila lì invece di duplicarla.
 
+## Migrazione fra servizi
+
+Un abbonamento si sposta da un servizio a un altro (stessa persona) con un documento
+`Migration`, non modificando il campo `service`: serve poter pianificare in anticipo,
+mostrare l'avviso prima della decorrenza e ricostruire in seguito come è stato fatto il
+conto. La spec sta in `docs/superpowers/specs/2026-09-23-migrazione-abbonamento-design.md`.
+
+Regole che non vanno riscoperte a caso:
+
+- **Un ciclo già pagato non si rimborsa in denaro.** Il credito nasce solo dai mesi interi
+  pagati e non consumati, ed è limitato a quanto era stato davvero incassato: vedere
+  `creditMonths` × tariffa come importo è il massimo teorico, non il netto.
+- **`closeOld` distingue la chiusura anticipata dall'accavallamento voluto**, non la data:
+  con `a_scadenza` il vecchio abbonamento resta attivo fino alla sua scadenza e il credito
+  è zero per scelta, non per calcolo.
+- **Il credito è un `Payment` con `kind: "credito_migrazione"`**, non un campo sul nuovo
+  abbonamento: così `outstanding` scende attraverso `paidForCycle` senza toccare il motore
+  di calcolo. Conseguenza da ricordare ogni volta che si aggiunge un aggregato di denaro:
+  **va escluso**, altrimenti si conta due volte un incasso che non c'è mai stato. Usare
+  `$ne: "credito_migrazione"` e non `$eq: "incasso"`, perché i pagamenti scritti prima che
+  il campo esistesse non lo hanno in documento.
+- **Un versamento che completa un ciclo già coperto in parte resta ancorato a quel ciclo**
+  e non fa avanzare `lastPaymentDate`. `paidForCycle` riconosce un pagamento confrontando
+  `periodEnd` con la scadenza corrente: far avanzare la scadenza scollegherebbe i
+  versamenti precedenti e l'app richiederebbe soldi già incassati.
+- **Non esiste uno scheduler.** L'app avvisa, l'admin esegue dal banner sulla scheda. La
+  rotta di esecuzione rivendica la migrazione in modo atomico prima di scrivere.
+- **Un abbonamento cessato sul servizio di destinazione viene riusato**, non duplicato:
+  l'indice unico persona × servizio copre anche i cessati, quindi crearne un secondo è
+  impossibile e rifiutare bloccherebbe per sempre chi torna indietro.
+
 ## Modello dati
 
 `Service` (tariffa mensile per persona) × `Person` → `Subscription`, più `Payment` per lo
