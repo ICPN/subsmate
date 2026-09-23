@@ -1,8 +1,19 @@
 import { requireAdmin } from "@/lib/requireAdmin";
 import { listPayments, listSubscriptions } from "@/lib/queries";
 import { PageHeader } from "@/components/PageHeader";
-import { Card, TableWrap, Th, SortableTh, Td, EmptyState, StatCard } from "@/components/ui";
+import {
+  Card,
+  TableWrap,
+  Th,
+  SortableTh,
+  Td,
+  EmptyState,
+  StatCard,
+  LinkButton,
+} from "@/components/ui";
 import { parseSort, sortRows, sortHrefBuilder, type SortValue } from "@/lib/sorting";
+import { PAGE_SIZES, parsePagination, paginate, pageHrefBuilder } from "@/lib/pagination";
+import Link from "next/link";
 import { Pill } from "@/components/StatusBadge";
 import { NewPaymentButton, PaymentRowActions } from "@/components/PaymentRowActions";
 import { formatEUR, formatDate } from "@/lib/billing";
@@ -17,12 +28,12 @@ function personOf(payment: { person: unknown }) {
 export default async function PaymentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ sort?: string; dir?: string }>;
+  searchParams: Promise<{ sort?: string; dir?: string; per?: string; page?: string }>;
 }) {
   await requireAdmin("/pagamenti");
-  const { sort, dir } = await searchParams;
+  const { sort, dir, per, page } = await searchParams;
   const [allPayments, subscriptions] = await Promise.all([
-    listPayments(100),
+    listPayments(),
     listSubscriptions(),
   ]);
 
@@ -58,11 +69,30 @@ export default async function PaymentsPage({
     key: "data",
     dir: "desc",
   });
-  const payments = sortRows(allPayments, SORT_ACCESSORS[currentSort.key], currentSort.dir);
-  const sortHref = sortHrefBuilder("/pagamenti", {}, currentSort);
+  const sorted = sortRows(allPayments, SORT_ACCESSORS[currentSort.key], currentSort.dir);
 
-  const collected = payments.reduce((sum, payment) => sum + payment.amount, 0);
-  const donations = payments.reduce((sum, payment) => sum + (payment.donationAmount ?? 0), 0);
+  // Si pagina dopo l'ordinamento, così cambiare colonna riordina tutto lo
+  // storico e non solo le righe che si stanno guardando.
+  const pagination = parsePagination({ per, page }, sorted.length);
+  const pageOf = paginate(sorted, pagination);
+  const payments = pageOf.rows;
+
+  // Cambiare ordinamento riporta alla prima pagina: `per` si conserva, `page` no.
+  const sortHref = sortHrefBuilder(
+    "/pagamenti",
+    { per: pagination.per === PAGE_SIZES[0] ? undefined : String(pagination.per) },
+    currentSort
+  );
+  const pageHref = pageHrefBuilder(
+    "/pagamenti",
+    { sort: currentSort.key, dir: currentSort.dir },
+    pagination
+  );
+
+  // Totali su tutto lo storico, non sulla pagina mostrata: le etichette
+  // dicono "registrati" e "totale incassato", e devono valere per l'archivio.
+  const collected = allPayments.reduce((sum, payment) => sum + payment.amount, 0);
+  const donations = allPayments.reduce((sum, payment) => sum + (payment.donationAmount ?? 0), 0);
 
   return (
     <div className="space-y-6">
@@ -73,7 +103,7 @@ export default async function PaymentsPage({
       />
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard label="Pagamenti registrati" value={String(payments.length)} />
+        <StatCard label="Pagamenti registrati" value={String(allPayments.length)} />
         <StatCard label="Totale incassato" value={formatEUR(collected)} />
         <StatCard label="di cui donazioni" value={formatEUR(donations)} />
       </div>
@@ -81,7 +111,24 @@ export default async function PaymentsPage({
       <Card
         title="Storico"
         action={
-          <span className="text-xs text-[var(--ink-muted)]">Ultimi 100 movimenti</span>
+          <span className="flex items-center gap-2 text-xs text-[var(--ink-muted)]">
+            <span>Righe per pagina</span>
+            {PAGE_SIZES.map((size) =>
+              size === pagination.per ? (
+                <span key={size} className="tnum font-medium text-[var(--ink-navy)]">
+                  {size}
+                </span>
+              ) : (
+                <Link
+                  key={size}
+                  href={pageHref.toSize(size)}
+                  className="tnum underline underline-offset-2 hover:text-[var(--ink-navy)]"
+                >
+                  {size}
+                </Link>
+              )
+            )}
+          </span>
         }
       >
         {payments.length === 0 ? (
@@ -161,9 +208,15 @@ export default async function PaymentsPage({
                       <Td align="right">
                         <PaymentRowActions
                           subscriptionId={String(payment.subscription)}
-                          paymentId={String(payment._id)}
-                          amount={payment.amount}
-                          paidAt={new Date(payment.paidAt).toISOString()}
+                          payment={{
+                            _id: String(payment._id),
+                            amount: payment.amount,
+                            donationAmount: payment.donationAmount ?? 0,
+                            paidAt: new Date(payment.paidAt).toISOString(),
+                            method: payment.method ?? "bonifico",
+                            reference: payment.reference ?? "",
+                            notes: payment.notes ?? "",
+                          }}
                         />
                       </Td>
                     </tr>
@@ -173,6 +226,28 @@ export default async function PaymentsPage({
             </table>
           </TableWrap>
         )}
+
+        {pageOf.total > 0 ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] px-4 py-3 text-xs text-[var(--ink-muted)]">
+            <span className="tnum">
+              Mostra {pageOf.from}–{pageOf.to} di {pageOf.total} pagamenti
+            </span>
+            {pageOf.lastPage > 1 ? (
+              <span className="flex items-center gap-2">
+                {pageOf.hasPrevious ? (
+                  <LinkButton href={pageHref.toPage(pagination.page - 1)}>
+                    Mostra precedenti
+                  </LinkButton>
+                ) : null}
+                {pageOf.hasNext ? (
+                  <LinkButton href={pageHref.toPage(pagination.page + 1)}>
+                    Mostra successivi
+                  </LinkButton>
+                ) : null}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
       </Card>
     </div>
   );

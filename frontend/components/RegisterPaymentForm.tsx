@@ -16,9 +16,12 @@ import { formatEUR, toDateInputValue } from "@/lib/billing";
  * l'admin scrive un valore suo — scegliere l'abbonamento dopo aver digitato
  * l'importo non deve riscrivere quello che ha appena inserito.
  *
- * Due modi d'uso: dalla scheda di un abbonamento l'abbonamento è già noto e si
+ * Tre modi d'uso: dalla scheda di un abbonamento l'abbonamento è già noto e si
  * passa `subscriptionId`; dalla pagina Pagamenti si passa invece l'elenco in
- * `subscriptions` e lo si cerca con SubscriptionPicker.
+ * `subscriptions` e lo si cerca con SubscriptionPicker; passando `payment` il
+ * form corregge un pagamento esistente (PATCH invece di POST). La modalità di
+ * modifica riusa questo form invece di averne uno suo per non duplicare il
+ * calcolo del residuo e l'avviso sull'incasso parziale.
  */
 
 const METHODS = [
@@ -43,9 +46,22 @@ export interface PaymentSubscriptionOption {
   donationSupplement: number;
 }
 
+/** Pagamento da correggere, nei campi che il form sa modificare. */
+export interface EditablePayment {
+  _id: string;
+  amount: number;
+  donationAmount: number;
+  /** ISO: il form la riduce a "yyyy-mm-dd" con i componenti locali. */
+  paidAt: string;
+  method: string;
+  reference: string;
+  notes: string;
+}
+
 export function RegisterPaymentForm({
   subscriptionId,
   subscriptions,
+  payment,
   defaultAmount = 0,
   defaultDonation = 0,
   defaultOutstanding = 0,
@@ -53,6 +69,8 @@ export function RegisterPaymentForm({
 }: {
   subscriptionId?: string;
   subscriptions?: PaymentSubscriptionOption[];
+  /** Se presente il form corregge questo pagamento invece di crearne uno. */
+  payment?: EditablePayment;
   defaultAmount?: number;
   defaultDonation?: number;
   defaultOutstanding?: number;
@@ -63,7 +81,10 @@ export function RegisterPaymentForm({
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState(subscriptionId ?? "");
 
-  const chooseSubscription = !subscriptionId;
+  const editing = Boolean(payment);
+  // In modifica l'abbonamento non si cambia: la rotta PATCH non lo accetta,
+  // perché sposterebbe anche la persona e la scadenza di due abbonamenti.
+  const chooseSubscription = !subscriptionId && !editing;
   const current = subscriptions?.find((option) => option._id === selected);
 
   const expected = chooseSubscription ? (current?.totalDue ?? 0) : defaultAmount;
@@ -74,8 +95,14 @@ export function RegisterPaymentForm({
   // Se il ciclo è già pagato in parte, il residuo è il suggerimento utile.
   const suggestedAmount = outstanding > 0 ? outstanding : expected;
 
-  const [amount, setAmount] = useState(String(suggestedAmount || ""));
-  const [donation, setDonation] = useState(String(donationSuggested || ""));
+  // In modifica si parte dai valori registrati, non dal suggerimento: l'importo
+  // incassato è un fatto, la quota dovuta solo un'ipotesi di partenza.
+  const [amount, setAmount] = useState(
+    payment ? String(payment.amount) : String(suggestedAmount || "")
+  );
+  const [donation, setDonation] = useState(
+    payment ? String(payment.donationAmount || "") : String(donationSuggested || "")
+  );
   // Una volta che l'admin scrive, il campo è suo: nessun suggerimento lo sovrascrive.
   const [amountEdited, setAmountEdited] = useState(false);
   const [donationEdited, setDonationEdited] = useState(false);
@@ -107,8 +134,10 @@ export function RegisterPaymentForm({
 
     const form = new FormData(event.currentTarget);
     const result = await submitJson(
-      `/api/subscriptions/${selected}/payments`,
-      "POST",
+      payment
+        ? `/api/subscriptions/${selected}/payments/${payment._id}`
+        : `/api/subscriptions/${selected}/payments`,
+      payment ? "PATCH" : "POST",
       {
         amount: Number(amount),
         donationAmount: Number(donation || 0),
@@ -117,7 +146,7 @@ export function RegisterPaymentForm({
         reference: String(form.get("reference") ?? ""),
         notes: String(form.get("notes") ?? ""),
       },
-      "Registrazione non riuscita. Riprova."
+      payment ? "Modifica non riuscita. Riprova." : "Registrazione non riuscita. Riprova."
     );
 
     setPending(false);
@@ -128,7 +157,7 @@ export function RegisterPaymentForm({
     }
 
     // La scadenza e lo stato sono ricalcolati lato server: ricarico i dati.
-    if (onSuccess) onSuccess("Pagamento registrato");
+    if (onSuccess) onSuccess(payment ? "Pagamento aggiornato" : "Pagamento registrato");
     router.refresh();
   }
 
@@ -192,13 +221,13 @@ export function RegisterPaymentForm({
           <TextInput
             type="date"
             name="paidAt"
-            defaultValue={toDateInputValue(new Date())}
+            defaultValue={toDateInputValue(payment ? new Date(payment.paidAt) : new Date())}
             required
           />
         </Field>
 
         <Field label="Metodo">
-          <Select name="method" defaultValue="bonifico">
+          <Select name="method" defaultValue={payment?.method ?? "bonifico"}>
             {METHODS.map((method) => (
               <option key={method.value} value={method.value}>
                 {method.label}
@@ -208,11 +237,11 @@ export function RegisterPaymentForm({
         </Field>
 
         <Field label="Riferimento" hint="Numero CRO, ID transazione">
-          <TextInput type="text" name="reference" />
+          <TextInput type="text" name="reference" defaultValue={payment?.reference ?? ""} />
         </Field>
 
         <Field label="Note">
-          <TextInput type="text" name="notes" />
+          <TextInput type="text" name="notes" defaultValue={payment?.notes ?? ""} />
         </Field>
       </div>
 
@@ -232,7 +261,13 @@ export function RegisterPaymentForm({
       {error ? <ErrorMessage>{error}</ErrorMessage> : null}
 
       <button type="submit" disabled={pending} className={buttonPrimary}>
-        {pending ? "Registrazione in corso" : "Registra pagamento"}
+        {editing
+          ? pending
+            ? "Salvataggio in corso"
+            : "Salva modifiche"
+          : pending
+            ? "Registrazione in corso"
+            : "Registra pagamento"}
       </button>
     </form>
   );

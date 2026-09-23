@@ -6,6 +6,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Modal } from "@/components/Modal";
 import {
   RegisterPaymentForm,
+  type EditablePayment,
   type PaymentSubscriptionOption,
 } from "@/components/RegisterPaymentForm";
 import { useToast } from "@/components/Toast";
@@ -55,20 +56,27 @@ export function NewPaymentButton({
   );
 }
 
+/**
+ * Azioni sulla riga di un pagamento: correzione e cancellazione.
+ *
+ * La correzione modifica il documento esistente: l'importo, la donazione, la
+ * data, il metodo, il riferimento e le note. L'abbonamento a cui è imputato
+ * non si cambia — per quello resta la cancellazione seguita da un nuovo
+ * inserimento, che è anche l'unico modo di spostare la persona.
+ */
 export function PaymentRowActions({
   subscriptionId,
-  paymentId,
-  amount,
-  paidAt,
+  payment,
 }: {
   subscriptionId: string;
-  paymentId: string;
-  amount: number;
-  paidAt: string;
+  payment: EditablePayment;
 }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const router = useRouter();
   const showToast = useToast();
+
+  const { _id: paymentId, amount, paidAt } = payment;
 
   async function handleDelete() {
     const response = await fetch(
@@ -86,13 +94,33 @@ export function PaymentRowActions({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setConfirmOpen(true)}
-        className={`${buttonSecondary} px-2.5 py-1 text-xs`}
-      >
-        Elimina
-      </button>
+      <span className="inline-flex gap-2">
+        <button
+          type="button"
+          onClick={() => setEditOpen(true)}
+          className={`${buttonSecondary} px-2.5 py-1 text-xs`}
+        >
+          Modifica
+        </button>
+        <button
+          type="button"
+          onClick={() => setConfirmOpen(true)}
+          className={`${buttonSecondary} px-2.5 py-1 text-xs`}
+        >
+          Elimina
+        </button>
+      </span>
+      <Modal open={editOpen} onClose={() => setEditOpen(false)} title="Modifica pagamento">
+        <RegisterPaymentForm
+          subscriptionId={subscriptionId}
+          payment={payment}
+          onSuccess={(message) => {
+            setEditOpen(false);
+            showToast(message);
+            router.refresh();
+          }}
+        />
+      </Modal>
       <ConfirmDialog
         open={confirmOpen}
         onClose={() => setConfirmOpen(false)}

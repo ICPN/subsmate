@@ -96,14 +96,19 @@ export async function listServices() {
   return services.map((service) => ({ ...service, logo: serviceLogoFor(service.slug) }));
 }
 
-export async function listPayments(limit = 50) {
+/**
+ * Storico pagamenti, dal più recente. Senza `limit` li legge tutti: la pagina
+ * Pagamenti ordina e pagina in memoria (vedi `lib/pagination.ts`), quindi un
+ * taglio qui le nasconderebbe le righe oltre il limite e falserebbe i totali.
+ * Il parametro resta per chi vuole solo gli ultimi n.
+ */
+export async function listPayments(limit?: number) {
   await connectToDatabase();
   void Person;
-  return Payment.find()
+  const query = Payment.find()
     .populate("person", "firstName lastName email")
-    .sort({ paidAt: -1 })
-    .limit(limit)
-    .lean();
+    .sort({ paidAt: -1 });
+  return (limit ? query.limit(limit) : query).lean();
 }
 
 /** Aggregati della dashboard: totali del ciclo, contatori di stato, lista da seguire. */

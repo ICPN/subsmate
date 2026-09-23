@@ -211,9 +211,15 @@ export default async function SubscriptionDetailPage({
                       <Td align="right">
                         <PaymentRowActions
                           subscriptionId={String(sub._id)}
-                          paymentId={String(payment._id)}
-                          amount={payment.amount}
-                          paidAt={new Date(payment.paidAt).toISOString()}
+                          payment={{
+                            _id: String(payment._id),
+                            amount: payment.amount,
+                            donationAmount: payment.donationAmount ?? 0,
+                            paidAt: new Date(payment.paidAt).toISOString(),
+                            method: payment.method ?? "bonifico",
+                            reference: payment.reference ?? "",
+                            notes: payment.notes ?? "",
+                          }}
                         />
                       </Td>
                     </tr>

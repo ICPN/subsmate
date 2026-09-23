@@ -4,8 +4,16 @@ export const PAYMENT_METHODS = ["bonifico", "contanti", "paypal", "satispay", "a
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
 /**
- * Riga dello storico pagamenti. Immutabile per natura: le correzioni si fanno
- * cancellando e reinserendo, così lo storico resta leggibile.
+ * Riga dello storico pagamenti. Correggibile ma non riassegnabile: importo,
+ * donazione, data, metodo, riferimento e note si modificano sul documento
+ * esistente (PATCH sulla rotta del pagamento), mentre l'abbonamento a cui è
+ * imputato non si cambia — sposterebbe anche `person` e la scadenza di due
+ * abbonamenti insieme, quindi quel caso resta cancella-e-reinserisci.
+ *
+ * La correzione non conserva il valore precedente: l'unica traccia è
+ * `updatedAt`, e questo è un limite accettato. Lo storno con riga di rettifica
+ * l'avrebbe conservato, ma avrebbe costretto elenco, saldo del ciclo e
+ * dashboard a riconoscere e ignorare le coppie stornate.
  */
 const PaymentSchema = new Schema(
   {
@@ -18,7 +26,8 @@ const PaymentSchema = new Schema(
     donationAmount: { type: Number, min: 0, default: 0 },
     paidAt: { type: Date, required: true, default: () => new Date() },
     method: { type: String, enum: PAYMENT_METHODS, default: "bonifico" },
-    // Periodo coperto dal pagamento, calcolato al momento della registrazione.
+    // Periodo coperto dal pagamento, derivato da paidAt: ricalcolato anche
+    // quando una correzione sposta la data, non solo alla registrazione.
     periodStart: { type: Date, default: null },
     periodEnd: { type: Date, default: null },
     reference: { type: String, trim: true, default: "" },
