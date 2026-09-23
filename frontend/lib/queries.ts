@@ -3,7 +3,16 @@ import { Subscription } from "@/models/Subscription";
 import { Payment } from "@/models/Payment";
 import { Person } from "@/models/Person";
 import { Service } from "@/models/Service";
+import { Migration } from "@/models/Migration";
 import { computeSubscription, type SubscriptionComputation } from "@/lib/billing";
+import {
+  migrationAlert,
+  migrationBalance,
+  type MigrationAlert,
+  type MigrationBalance,
+  type MigrationCloseOld,
+  type MigrationStatus,
+} from "@/lib/migration";
 import { serviceLogoFor } from "@/lib/serviceLogo";
 import type { Periodicity, OnboardingStatus } from "@/models/Subscription";
 
@@ -11,6 +20,24 @@ import type { Periodicity, OnboardingStatus } from "@/models/Subscription";
  * Letture condivise fra route handler e Server Component.
  * Unica fonte di verità: le pagine non ri-chiamano le API via HTTP.
  */
+
+export interface MigrationView {
+  _id: string;
+  toService: {
+    _id: string;
+    name: string;
+    slug: string;
+    monthlyRate: number;
+    logo: string | null;
+  } | null;
+  effectiveDate: Date;
+  closeOld: MigrationCloseOld;
+  status: MigrationStatus;
+  /** Avviso derivato: null quando non c'è nulla da segnalare. */
+  alert: MigrationAlert | null;
+  /** Saldo ricalcolato a ogni lettura, mai lo snapshot salvato. */
+  balance: MigrationBalance | null;
+}
 
 export interface SubscriptionView {
   _id: string;
@@ -31,6 +58,8 @@ export interface SubscriptionView {
   lastPaymentDate: Date | null;
   notes: string;
   computed: SubscriptionComputation;
+  /** Migrazione pianificata o appena eseguita che riguarda questo abbonamento. */
+  migration: MigrationView | null;
 }
 
 /** Abbonamenti con quota, scadenza e stato già calcolati. */
@@ -62,27 +91,105 @@ export async function listSubscriptions(
     paymentsBySubscription.set(key, list);
   }
 
+  // Una query sola per tutte le migrazioni che riguardano questi abbonamenti,
+  // come per i pagamenti: niente una-query-per-riga. Le annullate non servono
+  // a nessuno dei due usi, avviso e saldo.
+  const migrations = await Migration.find({
+    fromSubscription: { $in: subscriptions.map((sub) => sub._id) },
+    status: { $ne: "annullata" },
+  })
+    .populate("toService", "name slug monthlyRate")
+    .sort({ createdAt: -1 })
+    .lean();
+
+  const migrationsBySubscription = new Map<string, (typeof migrations)[number]>();
+  for (const migration of migrations) {
+    const key = String(migration.fromSubscription);
+    // La più recente vince: le precedenti sono storia già chiusa.
+    if (!migrationsBySubscription.has(key)) migrationsBySubscription.set(key, migration);
+  }
+
   const now = new Date();
   return subscriptions.map((sub) => {
     const service = sub.service as unknown as SubscriptionView["service"];
+    const computed = computeSubscription(
+      {
+        monthlyRate: service?.monthlyRate ?? 0,
+        periodicity: sub.periodicity,
+        donationSupplement: sub.donationSupplement,
+        onboardingStatus: sub.onboardingStatus,
+        startDate: sub.startDate,
+        lastPaymentDate: sub.lastPaymentDate,
+        billingDayOfMonth: service?.billingDayOfMonth,
+        payments: paymentsBySubscription.get(String(sub._id)) ?? [],
+      },
+      now
+    );
+
+    const raw = migrationsBySubscription.get(String(sub._id));
+    const toService = raw?.toService as unknown as MigrationView["toService"];
+    const migration: MigrationView | null = raw
+      ? {
+          _id: String(raw._id),
+          toService: toService ? { ...toService, logo: serviceLogoFor(toService.slug) } : null,
+          effectiveDate: raw.effectiveDate,
+          closeOld: raw.closeOld,
+          status: raw.status,
+          alert: migrationAlert(
+            {
+              status: raw.status,
+              effectiveDate: raw.effectiveDate,
+              closeOld: raw.closeOld,
+              oldNextDueDate: computed.nextDueDate,
+              oldStillActive: sub.onboardingStatus === "attivo",
+            },
+            now
+          ),
+          // Solo finché è pianificata: dopo l'esecuzione il vecchio
+          // abbonamento è cessato e il saldo non è più ricostruibile da qui.
+          balance:
+            raw.status === "pianificata" && toService
+              ? migrationBalance({
+                  effectiveDate: raw.effectiveDate,
+                  closeOld: raw.closeOld,
+                  oldNextDueDate: computed.nextDueDate,
+                  oldMonthlyRate: service?.monthlyRate ?? 0,
+                  oldPaidForCurrentCycle: computed.paidForCurrentCycle,
+                  newMonthlyRate: toService.monthlyRate,
+                  newPeriodicity: sub.periodicity,
+                  donationSupplement: sub.donationSupplement,
+                })
+              : null,
+        }
+      : null;
+
     return {
       ...(sub as unknown as SubscriptionView),
       service: service ? { ...service, logo: serviceLogoFor(service.slug) } : null,
-      computed: computeSubscription(
-        {
-          monthlyRate: service?.monthlyRate ?? 0,
-          periodicity: sub.periodicity,
-          donationSupplement: sub.donationSupplement,
-          onboardingStatus: sub.onboardingStatus,
-          startDate: sub.startDate,
-          lastPaymentDate: sub.lastPaymentDate,
-          billingDayOfMonth: service?.billingDayOfMonth,
-          payments: paymentsBySubscription.get(String(sub._id)) ?? [],
-        },
-        now
-      ),
+      computed,
+      migration,
     };
   });
+}
+
+/**
+ * Singola migrazione, per le rotte che devono rispondere con lo stato
+ * aggiornato. Riusa `listSubscriptions` invece di ricalcolare saldo e avviso,
+ * così esiste una sola versione di quel calcolo.
+ *
+ * Quella funzione però espone la migrazione *corrente* dell'abbonamento, la
+ * più recente fra le non annullate: se nel frattempo ne fosse nata un'altra,
+ * risponderebbe su un documento diverso da quello chiesto. Il confronto sugli
+ * id lo impedisce — meglio nessuna risposta che la risposta sbagliata.
+ */
+export async function getMigration(id: string): Promise<MigrationView | null> {
+  await connectToDatabase();
+  const migration = await Migration.findById(id).lean();
+  if (!migration) return null;
+
+  const [subscription] = await listSubscriptions({ _id: migration.fromSubscription });
+  const view = subscription?.migration ?? null;
+  return view && view._id === String(migration._id) ? view : null;
 }
 
 export async function listPeople() {
