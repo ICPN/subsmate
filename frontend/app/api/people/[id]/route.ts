@@ -1,6 +1,7 @@
 import { connectToDatabase } from "@/lib/mongodb";
 import { Person } from "@/models/Person";
 import { Subscription } from "@/models/Subscription";
+import { Payment } from "@/models/Payment";
 import { Service } from "@/models/Service";
 import { personUpdateSchema } from "@/lib/validation";
 import { ok, fail, handleError, parseBody } from "@/lib/api";
@@ -22,8 +23,24 @@ async function handleGET(_request: Request, { params }: Context) {
     if (!person) return fail("Persona non trovata", 404);
 
     const subscriptions = await Subscription.find({ person: id })
-      .populate<{ service: { name: string; monthlyRate: number } }>("service", "name slug monthlyRate")
+      .populate<{ service: { name: string; monthlyRate: number; billingDayOfMonth: number | null } }>(
+        "service",
+        "name slug monthlyRate billingDayOfMonth"
+      )
       .lean();
+
+    // Storico di tutti gli abbonamenti della persona, per il saldo del ciclo.
+    const payments = await Payment.find(
+      { subscription: { $in: subscriptions.map((sub) => sub._id) } },
+      { subscription: 1, amount: 1, periodEnd: 1 }
+    ).lean();
+    const paymentsBySubscription = new Map<string, { amount: number; periodEnd: Date | null }[]>();
+    for (const payment of payments) {
+      const key = String(payment.subscription);
+      const list = paymentsBySubscription.get(key) ?? [];
+      list.push({ amount: payment.amount, periodEnd: payment.periodEnd ?? null });
+      paymentsBySubscription.set(key, list);
+    }
 
     const now = new Date();
     const enriched = subscriptions.map((sub) => ({
@@ -36,6 +53,8 @@ async function handleGET(_request: Request, { params }: Context) {
           onboardingStatus: sub.onboardingStatus,
           startDate: sub.startDate,
           lastPaymentDate: sub.lastPaymentDate,
+          billingDayOfMonth: sub.service?.billingDayOfMonth,
+          payments: paymentsBySubscription.get(String(sub._id)) ?? [],
         },
         now
       ),

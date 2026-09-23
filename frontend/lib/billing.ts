@@ -61,18 +61,38 @@ export function totalDue(
 }
 
 /**
- * Prossima scadenza: ultimo pagamento + periodicità.
- * Senza pagamenti si usa la data di inizio; senza nemmeno quella è null
+ * Porta una data sul giorno di addebito del servizio, tagliando sui mesi corti
+ * (addebito il 31 in febbraio → 28 o 29). Senza giorno di addebito la data resta
+ * invariata, così i servizi che non lo dichiarano mantengono il comportamento
+ * "stessa data del pagamento".
+ */
+export function onBillingDay(date: Date, billingDayOfMonth?: number | null): Date {
+  const result = new Date(date.getTime());
+  if (!billingDayOfMonth) return result;
+  const lastDayOfMonth = new Date(result.getFullYear(), result.getMonth() + 1, 0).getDate();
+  result.setDate(Math.min(billingDayOfMonth, lastDayOfMonth));
+  return result;
+}
+
+/**
+ * Prossima scadenza: giorno di addebito del servizio nel mese successivo al
+ * pagamento (periodicità mensile) o tre mesi dopo (trimestrale).
+ *
+ * Conta il MESE del pagamento, non il giorno: chi versa il 3 e chi versa il 27
+ * di settembre hanno entrambi scadenza il 18 ottobre. Senza pagamenti si usa
+ * allo stesso modo il mese della data di inizio; senza nemmeno quella è null
  * (abbonamento ancora da attivare).
  */
 export function nextDueDate(
   lastPaymentDate: Date | null | undefined,
   startDate: Date | null | undefined,
-  periodicity: Periodicity
+  periodicity: Periodicity,
+  billingDayOfMonth?: number | null
 ): Date | null {
-  if (lastPaymentDate) return addMonths(new Date(lastPaymentDate), PERIOD_MONTHS[periodicity]);
-  if (startDate) return new Date(startDate);
-  return null;
+  const months = PERIOD_MONTHS[periodicity];
+  const base = lastPaymentDate ?? startDate;
+  if (!base) return null;
+  return onBillingDay(addMonths(new Date(base), months), billingDayOfMonth);
 }
 
 /** Stato pagamento derivato. Mai persistito: si ricalcola ad ogni lettura. */
@@ -95,6 +115,43 @@ export interface SubscriptionComputation {
   nextDueDate: Date | null;
   daysToDue: number | null;
   status: PaymentStatus;
+  /** Somma già incassata per il ciclo in corso. */
+  paidForCurrentCycle: number;
+  /** Quanto manca ancora per quel ciclo. Zero se il ciclo è saldato. */
+  outstanding: number;
+}
+
+/** Pagamento, ridotto ai campi che servono al calcolo del saldo. */
+export interface PaymentForBalance {
+  amount: number;
+  periodEnd?: Date | string | null;
+}
+
+/** Stesso giorno di calendario, ignorando l'orario. */
+function isSameDay(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+/**
+ * Quanto è stato incassato per il ciclo che scade in `due`.
+ *
+ * Un pagamento appartiene al ciclo corrente se la fine del periodo che copre
+ * coincide con la scadenza corrente: tutti i versamenti fatti nello stesso
+ * ciclo sono ancorati allo stesso giorno di addebito, quindi condividono il
+ * medesimo `periodEnd`. Serve a sommare più versamenti parziali dello stesso
+ * ciclo senza confonderli con quelli dei cicli precedenti.
+ */
+export function paidForCycle(payments: PaymentForBalance[], due: Date | null): number {
+  if (!due) return 0;
+  const total = payments.reduce((sum, payment) => {
+    if (!payment.periodEnd) return sum;
+    return isSameDay(new Date(payment.periodEnd), due) ? sum + payment.amount : sum;
+  }, 0);
+  return round2(total);
 }
 
 /** Calcolo completo per un abbonamento: usato da API e UI, un'unica fonte di verità. */
@@ -106,26 +163,51 @@ export function computeSubscription(
     onboardingStatus: OnboardingStatus;
     startDate?: Date | null;
     lastPaymentDate?: Date | null;
+    billingDayOfMonth?: number | null;
+    /** Storico pagamenti: serve solo a calcolare quanto manca al ciclo corrente. */
+    payments?: PaymentForBalance[];
   },
   now: Date = new Date()
 ): SubscriptionComputation {
   const donation = input.donationSupplement ?? 0;
-  const due = nextDueDate(input.lastPaymentDate, input.startDate, input.periodicity);
+  const due = nextDueDate(
+    input.lastPaymentDate,
+    input.startDate,
+    input.periodicity,
+    input.billingDayOfMonth
+  );
+  const dueTotal = totalDue(input.monthlyRate, input.periodicity, donation);
+  const paid = paidForCycle(input.payments ?? [], due);
   return {
     serviceQuota: serviceQuota(input.monthlyRate, input.periodicity),
     donationSupplement: donation,
-    totalDue: totalDue(input.monthlyRate, input.periodicity, donation),
+    totalDue: dueTotal,
     nextDueDate: due,
     daysToDue: due ? daysBetween(now, due) : null,
     status: paymentStatus(due, input.onboardingStatus, now),
+    paidForCurrentCycle: paid,
+    // Un incasso superiore al dovuto non è un credito da esporre: resta zero.
+    outstanding: paid > 0 ? Math.max(0, round2(dueTotal - paid)) : 0,
   };
 }
 
-/** Periodo coperto da un pagamento effettuato in una certa data. */
-export function coveredPeriod(paidAt: Date, periodicity: Periodicity) {
+/**
+ * Periodo coperto da un pagamento effettuato in una certa data. La fine del
+ * periodo coincide con la scadenza successiva, quindi segue lo stesso giorno di
+ * addebito: altrimenti lo storico mostrerebbe un periodo che non combacia con la
+ * data in cui l'abbonamento risulta di nuovo da pagare.
+ */
+export function coveredPeriod(
+  paidAt: Date,
+  periodicity: Periodicity,
+  billingDayOfMonth?: number | null
+) {
   return {
     periodStart: new Date(paidAt),
-    periodEnd: addMonths(new Date(paidAt), PERIOD_MONTHS[periodicity]),
+    periodEnd: onBillingDay(
+      addMonths(new Date(paidAt), PERIOD_MONTHS[periodicity]),
+      billingDayOfMonth
+    ),
   };
 }
 

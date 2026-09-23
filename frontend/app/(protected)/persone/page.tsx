@@ -2,16 +2,22 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { listPeople, listSubscriptions } from "@/lib/queries";
 import { PageHeader } from "@/components/PageHeader";
-import { Card, TableWrap, Th, Td, EmptyState, StatCard } from "@/components/ui";
+import { Card, TableWrap, Th, SortableTh, Td, EmptyState, StatCard } from "@/components/ui";
+import { parseSort, sortRows, sortHrefBuilder, type SortValue } from "@/lib/sorting";
 import { Pill } from "@/components/StatusBadge";
 import { formatEUR } from "@/lib/billing";
 import { NewPersonButton, PersonRowActions } from "@/components/PersonActions";
 
 export const dynamic = "force-dynamic";
 
-export default async function PeoplePage() {
+export default async function PeoplePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ sort?: string; dir?: string }>;
+}) {
   await requireAdmin("/persone");
-  const [people, subscriptions] = await Promise.all([listPeople(), listSubscriptions()]);
+  const { sort, dir } = await searchParams;
+  const [allPeople, subscriptions] = await Promise.all([listPeople(), listSubscriptions()]);
 
   // Aggregato per persona: quanti servizi ha e quanto deve in totale.
   const byPerson = new Map<
@@ -33,8 +39,26 @@ export default async function PeoplePage() {
 
   const totalDue = [...byPerson.values()].reduce((sum, entry) => sum + entry.total, 0);
 
+  const aggregateOf = (id: string) =>
+    byPerson.get(id) ?? { count: 0, total: 0, services: [], late: 0 };
+
+  const SORT_ACCESSORS: Record<string, (person: (typeof allPeople)[number]) => SortValue> = {
+    nome: (person) => `${person.lastName} ${person.firstName}`,
+    email: (person) => person.email,
+    servizi: (person) => aggregateOf(String(person._id)).services.join(", "),
+    abbonamenti: (person) => aggregateOf(String(person._id)).count,
+    dovuto: (person) => aggregateOf(String(person._id)).total,
+  };
+
+  const currentSort = parseSort({ sort, dir }, Object.keys(SORT_ACCESSORS), {
+    key: "nome",
+    dir: "asc",
+  });
+  const people = sortRows(allPeople, SORT_ACCESSORS[currentSort.key], currentSort.dir);
+  const sortHref = sortHrefBuilder("/persone", {}, currentSort);
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         title="Persone"
         description="Membri del team e totale dovuto sommato su tutti i loro servizi."
@@ -61,11 +85,31 @@ export default async function PeoplePage() {
             <table className="w-full border-collapse">
               <thead className="border-b border-[var(--border)]">
                 <tr>
-                  <Th>Nome</Th>
-                  <Th>Email</Th>
-                  <Th>Servizi</Th>
-                  <Th align="right">Abbonamenti attivi</Th>
-                  <Th align="right">Totale dovuto</Th>
+                  <SortableTh sortKey="nome" current={currentSort} hrefFor={sortHref}>
+                    Nome
+                  </SortableTh>
+                  <SortableTh sortKey="email" current={currentSort} hrefFor={sortHref}>
+                    Email
+                  </SortableTh>
+                  <SortableTh sortKey="servizi" current={currentSort} hrefFor={sortHref}>
+                    Servizi
+                  </SortableTh>
+                  <SortableTh
+                    sortKey="abbonamenti"
+                    current={currentSort}
+                    hrefFor={sortHref}
+                    align="right"
+                  >
+                    Abbonamenti attivi
+                  </SortableTh>
+                  <SortableTh
+                    sortKey="dovuto"
+                    current={currentSort}
+                    hrefFor={sortHref}
+                    align="right"
+                  >
+                    Totale dovuto
+                  </SortableTh>
                   <Th align="right">Azioni</Th>
                 </tr>
               </thead>

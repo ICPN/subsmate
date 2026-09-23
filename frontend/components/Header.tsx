@@ -19,7 +19,7 @@ export function Header() {
 
   return (
     <header className="bg-[var(--ink-navy)] text-white">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-8 gap-y-3 px-6 py-4">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-8 gap-y-3 px-4 py-3 sm:px-6">
         <Link
           href="/"
           className="font-[family-name:var(--font-manrope)] text-lg font-bold tracking-tight"

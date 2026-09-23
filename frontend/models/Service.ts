@@ -11,7 +11,8 @@ const ServiceSchema = new Schema(
     // Tariffa mensile per persona, in euro. Base di calcolo della quota.
     monthlyRate: { type: Number, required: true, min: 0 },
     // Giorno del mese in cui la piattaforma addebita l'abbonamento (1-31).
-    billingDayOfMonth: { type: Number, min: 1, max: 31, default: 1 },
+    // 18 è la convenzione del team ICPN, non un valore arbitrario.
+    billingDayOfMonth: { type: Number, min: 1, max: 31, default: 18 },
     active: { type: Boolean, default: true },
     notes: { type: String, trim: true, default: "" },
   },

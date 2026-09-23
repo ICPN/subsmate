@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/requireAdmin";
-import { listSubscriptions, listServices, listPeople } from "@/lib/queries";
+import { listSubscriptions, listServices, listPeople, type SubscriptionView } from "@/lib/queries";
 import { NewSubscriptionButton, SubscriptionRowActions } from "@/components/SubscriptionActions";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge, Pill } from "@/components/StatusBadge";
-import { Card, TableWrap, Th, Td, EmptyState, ServiceMark } from "@/components/ui";
-import { formatEUR, formatDate, statusDetail, toDateInputValue, type PaymentStatus } from "@/lib/billing";
+import { Card, TableWrap, Th, SortableTh, Td, EmptyState, ServiceMark } from "@/components/ui";
+import { parseSort, sortRows, sortHrefBuilder, type SortValue } from "@/lib/sorting";
+import { formatEUR, formatDate, toDateInputValue, type PaymentStatus } from "@/lib/billing";
 
 export const dynamic = "force-dynamic";
 
@@ -22,13 +23,36 @@ const STATUS_FILTERS: { value: PaymentStatus | "tutti"; label: string }[] = [
   { value: "da_attivare", label: "Da attivare" },
 ];
 
+/**
+ * Colonne ordinabili.
+ *
+ * La persona si ordina per email, non per cognome: l'email è l'identificativo
+ * univoco di una persona in SubsMate (indice unico su Person), mentre due
+ * omonimi avrebbero la stessa chiave di ordinamento. È anche il dato mostrato
+ * sotto il nome nella colonna.
+ *
+ * Lo stato si ordina per giorni alla scadenza, non in ordine alfabetico
+ * dell'etichetta: "in ritardo" prima di "in regola" è l'ordine che serve a chi
+ * deve sollecitare.
+ */
+const SORT_ACCESSORS: Record<string, (sub: SubscriptionView) => SortValue> = {
+  persona: (sub) => sub.person?.email ?? null,
+  servizio: (sub) => sub.service?.name ?? null,
+  periodicita: (sub) => PERIODICITY_LABELS[sub.periodicity] ?? sub.periodicity,
+  quota: (sub) => sub.computed.serviceQuota,
+  donazione: (sub) => sub.computed.donationSupplement,
+  totale: (sub) => sub.computed.totalDue,
+  scadenza: (sub) => sub.computed.nextDueDate,
+  stato: (sub) => sub.computed.daysToDue,
+};
+
 export default async function SubscriptionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; service?: string }>;
+  searchParams: Promise<{ status?: string; service?: string; sort?: string; dir?: string }>;
 }) {
   await requireAdmin("/abbonamenti");
-  const { status, service } = await searchParams;
+  const { status, service, sort, dir } = await searchParams;
   const [allSubscriptions, services, people] = await Promise.all([
     listSubscriptions(service ? { service } : {}),
     listServices(),
@@ -43,15 +67,22 @@ export default async function SubscriptionsPage({
   }));
   const serviceOptions = services.map((item) => ({ _id: String(item._id), name: item.name }));
 
-  // Lo stato è calcolato, non salvato: il filtro si applica dopo il calcolo.
-  const subscriptions =
+  // Lo stato è calcolato, non salvato: filtro e ordinamento si applicano dopo il calcolo.
+  const filtered =
     status && status !== "tutti"
       ? allSubscriptions.filter((sub) => sub.computed.status === status)
       : allSubscriptions;
 
+  const currentSort = parseSort({ sort, dir }, Object.keys(SORT_ACCESSORS), {
+    key: "scadenza",
+    dir: "asc",
+  });
+  const subscriptions = sortRows(filtered, SORT_ACCESSORS[currentSort.key], currentSort.dir);
+  const sortHref = sortHrefBuilder("/abbonamenti", { status, service }, currentSort);
+
   const buildHref = (next: Record<string, string | undefined>) => {
     const params = new URLSearchParams();
-    const merged = { status, service, ...next };
+    const merged = { status, service, sort, dir, ...next };
     for (const [key, value] of Object.entries(merged)) {
       if (value && value !== "tutti") params.set(key, value);
     }
@@ -60,14 +91,17 @@ export default async function SubscriptionsPage({
   };
 
   return (
-    <div className="space-y-8">
+    // La tabella ha nove colonne: da lg in su recupera larghezza sfondando i margini
+    // laterali del contenitore. I valori restano sotto la larghezza del breakpoint
+    // corrispondente, quindi la pagina non può mai scorrere in orizzontale.
+    <div className="space-y-6 lg:-mx-4 xl:-mx-10 2xl:-mx-32">
       <PageHeader
         title="Abbonamenti"
         description="Una riga per ogni coppia persona × servizio. Quota, scadenza e stato sono calcolati dall'ultimo pagamento registrato."
         action={<NewSubscriptionButton people={peopleOptions} services={serviceOptions} />}
       />
 
-      <div className="flex flex-wrap items-center gap-6">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
         <FilterGroup
           legend="Stato"
           options={STATUS_FILTERS.map((option) => ({
@@ -116,14 +150,40 @@ export default async function SubscriptionsPage({
             <table className="w-full border-collapse">
               <thead className="border-b border-[var(--border)]">
                 <tr>
-                  <Th>Persona</Th>
-                  <Th>Servizio</Th>
-                  <Th>Periodicità</Th>
-                  <Th align="right">Quota</Th>
-                  <Th align="right">Donazione</Th>
-                  <Th align="right">Totale</Th>
-                  <Th>Scadenza</Th>
-                  <Th>Stato</Th>
+                  <SortableTh sortKey="persona" current={currentSort} hrefFor={sortHref}>
+                    Persona
+                  </SortableTh>
+                  <SortableTh sortKey="servizio" current={currentSort} hrefFor={sortHref}>
+                    Servizio
+                  </SortableTh>
+                  <SortableTh sortKey="periodicita" current={currentSort} hrefFor={sortHref}>
+                    Periodicità
+                  </SortableTh>
+                  <SortableTh sortKey="quota" current={currentSort} hrefFor={sortHref} align="right">
+                    Quota
+                  </SortableTh>
+                  <SortableTh
+                    sortKey="donazione"
+                    current={currentSort}
+                    hrefFor={sortHref}
+                    align="right"
+                  >
+                    Donazione
+                  </SortableTh>
+                  <SortableTh
+                    sortKey="totale"
+                    current={currentSort}
+                    hrefFor={sortHref}
+                    align="right"
+                  >
+                    Totale
+                  </SortableTh>
+                  <SortableTh sortKey="scadenza" current={currentSort} hrefFor={sortHref}>
+                    Scadenza
+                  </SortableTh>
+                  <SortableTh sortKey="stato" current={currentSort} hrefFor={sortHref}>
+                    Stato
+                  </SortableTh>
                   <Th align="right">Azioni</Th>
                 </tr>
               </thead>
@@ -144,7 +204,13 @@ export default async function SubscriptionsPage({
                         {sub.person?.email}
                       </span>
                     </Td>
-                    <Td>{sub.service ? <ServiceMark name={sub.service.name} /> : "—"}</Td>
+                    <Td>
+                      {sub.service ? (
+                        <ServiceMark name={sub.service.name} logo={sub.service.logo} />
+                      ) : (
+                        "—"
+                      )}
+                    </Td>
                     <Td>
                       <Pill>{PERIODICITY_LABELS[sub.periodicity] ?? sub.periodicity}</Pill>
                     </Td>
@@ -158,12 +224,17 @@ export default async function SubscriptionsPage({
                     </Td>
                     <Td align="right" className="tnum font-medium">
                       {formatEUR(sub.computed.totalDue)}
+                      {sub.computed.outstanding > 0 ? (
+                        <span
+                          className="block text-xs font-medium"
+                          style={{ color: "var(--status-warn)" }}
+                        >
+                          mancano {formatEUR(sub.computed.outstanding)}
+                        </span>
+                      ) : null}
                     </Td>
-                    <Td>
-                      <span className="tnum">{formatDate(sub.computed.nextDueDate)}</span>
-                      <span className="block text-xs text-[var(--ink-muted)]">
-                        {statusDetail(sub.computed.status, sub.computed.daysToDue)}
-                      </span>
+                    <Td className="tnum whitespace-nowrap">
+                      {formatDate(sub.computed.nextDueDate)}
                     </Td>
                     <Td>
                       <StatusBadge status={sub.computed.status} />
@@ -215,8 +286,8 @@ function FilterGroup({
           aria-current={option.active ? "true" : undefined}
           className={
             option.active
-              ? "rounded-[var(--radius)] bg-[var(--ink-navy)] px-3 py-1.5 text-xs font-medium text-white"
-              : "rounded-[var(--radius)] border border-[var(--border)] px-3 py-1.5 text-xs font-medium text-[var(--ink-navy)] hover:bg-[var(--surface)]"
+              ? "rounded-[var(--radius)] bg-[var(--ink-navy)] px-2.5 py-1 text-xs font-medium text-white"
+              : "rounded-[var(--radius)] border border-[var(--border)] px-2.5 py-1 text-xs font-medium text-[var(--ink-navy)] hover:bg-[var(--surface)]"
           }
         >
           {option.label}

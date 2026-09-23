@@ -6,23 +6,51 @@ import {
   Card,
   StatCard,
   TableWrap,
-  Th,
+  SortableTh,
   Td,
   EmptyState,
   LinkButton,
   ServiceMark,
 } from "@/components/ui";
+import { parseSort, sortRows, sortHrefBuilder, type SortValue } from "@/lib/sorting";
+import type { SubscriptionView } from "@/lib/queries";
 import { formatEUR, formatDate, statusDetail } from "@/lib/billing";
 
 // I dati cambiano a ogni pagamento registrato: nessuna cache statica.
 export const dynamic = "force-dynamic";
 
-export default async function DashboardPage() {
+/**
+ * L'ordine predefinito resta la scadenza più arretrata: è la domanda che la
+ * dashboard risponde. Le colonne restano comunque ordinabili come negli altri
+ * elenchi.
+ */
+const SORT_ACCESSORS: Record<string, (sub: SubscriptionView) => SortValue> = {
+  // Per email, come negli altri elenchi: è l'identificativo univoco della persona.
+  persona: (sub) => sub.person?.email ?? null,
+  servizio: (sub) => sub.service?.name ?? null,
+  scadenza: (sub) => sub.computed.nextDueDate,
+  dovuto: (sub) => sub.computed.totalDue,
+  stato: (sub) => sub.computed.daysToDue,
+};
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ sort?: string; dir?: string }>;
+}) {
   await requireAdmin("/");
+  const { sort, dir } = await searchParams;
   const { totals, counters, attention } = await getDashboardData();
 
+  const currentSort = parseSort({ sort, dir }, Object.keys(SORT_ACCESSORS), {
+    key: "scadenza",
+    dir: "asc",
+  });
+  const attentionRows = sortRows(attention, SORT_ACCESSORS[currentSort.key], currentSort.dir);
+  const sortHref = sortHrefBuilder("/", {}, currentSort);
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         title="Dashboard"
         description="Stato degli abbonamenti del team: quanto è dovuto nel ciclo corrente e chi va sollecitato."
@@ -76,15 +104,30 @@ export default async function DashboardPage() {
             <table className="w-full border-collapse">
               <thead className="border-b border-[var(--border)]">
                 <tr>
-                  <Th>Persona</Th>
-                  <Th>Servizio</Th>
-                  <Th>Scadenza</Th>
-                  <Th align="right">Dovuto</Th>
-                  <Th>Stato</Th>
+                  <SortableTh sortKey="persona" current={currentSort} hrefFor={sortHref}>
+                    Persona
+                  </SortableTh>
+                  <SortableTh sortKey="servizio" current={currentSort} hrefFor={sortHref}>
+                    Servizio
+                  </SortableTh>
+                  <SortableTh sortKey="scadenza" current={currentSort} hrefFor={sortHref}>
+                    Scadenza
+                  </SortableTh>
+                  <SortableTh
+                    sortKey="dovuto"
+                    current={currentSort}
+                    hrefFor={sortHref}
+                    align="right"
+                  >
+                    Dovuto
+                  </SortableTh>
+                  <SortableTh sortKey="stato" current={currentSort} hrefFor={sortHref}>
+                    Stato
+                  </SortableTh>
                 </tr>
               </thead>
               <tbody>
-                {attention.map((sub) => (
+                {attentionRows.map((sub) => (
                   <tr
                     key={String(sub._id)}
                     className="border-b border-[var(--border)] last:border-0"
@@ -97,7 +140,13 @@ export default async function DashboardPage() {
                         {sub.person?.email}
                       </span>
                     </Td>
-                    <Td>{sub.service ? <ServiceMark name={sub.service.name} /> : "—"}</Td>
+                    <Td>
+                      {sub.service ? (
+                        <ServiceMark name={sub.service.name} logo={sub.service.logo} />
+                      ) : (
+                        "—"
+                      )}
+                    </Td>
                     <Td>
                       <span className="tnum">{formatDate(sub.computed.nextDueDate)}</span>
                       <span className="block text-xs text-[var(--ink-muted)]">

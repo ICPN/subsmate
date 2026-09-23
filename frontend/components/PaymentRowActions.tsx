@@ -3,9 +3,57 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { Modal } from "@/components/Modal";
+import {
+  RegisterPaymentForm,
+  type PaymentSubscriptionOption,
+} from "@/components/RegisterPaymentForm";
 import { useToast } from "@/components/Toast";
-import { buttonSecondary } from "@/components/ui";
+import { buttonPrimary, buttonSecondary } from "@/components/ui";
 import { formatEUR, formatDate } from "@/lib/billing";
+
+/**
+ * Registrazione di un pagamento dalla pagina Pagamenti, dove l'abbonamento non
+ * è ancora noto e va scelto. Dalla scheda di un abbonamento si usa invece
+ * direttamente RegisterPaymentForm, che lo riceve già.
+ */
+export function NewPaymentButton({
+  subscriptions,
+}: {
+  subscriptions: PaymentSubscriptionOption[];
+}) {
+  const [open, setOpen] = useState(false);
+  const router = useRouter();
+  const showToast = useToast();
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className={buttonPrimary}
+        disabled={subscriptions.length === 0}
+        title={
+          subscriptions.length === 0
+            ? "Crea prima un abbonamento a cui imputare il pagamento"
+            : undefined
+        }
+      >
+        Registra pagamento
+      </button>
+      <Modal open={open} onClose={() => setOpen(false)} title="Registra pagamento">
+        <RegisterPaymentForm
+          subscriptions={subscriptions}
+          onSuccess={(message) => {
+            setOpen(false);
+            showToast(message);
+            router.refresh();
+          }}
+        />
+      </Modal>
+    </>
+  );
+}
 
 export function PaymentRowActions({
   subscriptionId,

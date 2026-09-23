@@ -24,7 +24,13 @@ async function handleGET(_request: Request, { params }: Context) {
       .lean();
     if (!subscription) return fail("Abbonamento non trovato", 404);
 
-    const service = subscription.service as unknown as { monthlyRate?: number } | null;
+    const service = subscription.service as unknown as {
+      monthlyRate?: number;
+      billingDayOfMonth?: number | null;
+    } | null;
+    // Lo storico serve anche al calcolo: un ciclo pagato solo in parte non è chiuso.
+    const payments = await Payment.find({ subscription: id }).sort({ paidAt: -1 }).lean();
+
     const computed = computeSubscription({
       monthlyRate: service?.monthlyRate ?? 0,
       periodicity: subscription.periodicity,
@@ -32,9 +38,9 @@ async function handleGET(_request: Request, { params }: Context) {
       onboardingStatus: subscription.onboardingStatus,
       startDate: subscription.startDate,
       lastPaymentDate: subscription.lastPaymentDate,
+      billingDayOfMonth: service?.billingDayOfMonth,
+      payments,
     });
-
-    const payments = await Payment.find({ subscription: id }).sort({ paidAt: -1 }).lean();
 
     return ok({ ...subscription, computed, payments });
   } catch (err) {

@@ -16,7 +16,7 @@ export function StatusBadge({ status }: { status: PaymentStatus }) {
   const color = COLORS[status];
   return (
     <span
-      className="inline-flex items-center whitespace-nowrap rounded-[var(--radius)] px-2.5 py-1 text-xs font-medium"
+      className="inline-flex items-center whitespace-nowrap rounded-[var(--radius)] px-2 py-0.5 text-xs font-medium"
       style={{
         color,
         // 1f in esadecimale ≈ 12% di opacità, come da guidelines.
@@ -31,7 +31,7 @@ export function StatusBadge({ status }: { status: PaymentStatus }) {
 /** Pillola neutra per etichette brevi non legate allo stato (servizio, periodicità). */
 export function Pill({ children }: { children: React.ReactNode }) {
   return (
-    <span className="inline-flex items-center whitespace-nowrap rounded-[var(--radius)] bg-[var(--surface)] px-2.5 py-1 text-xs font-medium text-[var(--ink-muted)]">
+    <span className="inline-flex items-center whitespace-nowrap rounded-[var(--radius)] bg-[var(--surface)] px-2 py-0.5 text-xs font-medium text-[var(--ink-muted)]">
       {children}
     </span>
   );

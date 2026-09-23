@@ -1,5 +1,7 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import type { SortState } from "@/lib/sorting";
 
 /**
  * Primitive condivise: card, statistiche, bottoni, tabella, stato vuoto.
@@ -23,7 +25,7 @@ export function Card({
       className={`rounded-[var(--radius)] border border-[var(--border)] bg-[var(--paper)] ${className}`}
     >
       {title || action ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] px-4 py-3">
           {title ? (
             <h2 className="font-[family-name:var(--font-manrope)] text-[18px] font-semibold">
               {title}
@@ -63,14 +65,14 @@ export function StatCard({
   } as const;
 
   return (
-    <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] px-5 py-6 text-center">
+    <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] px-4 py-5 text-center">
       <p
         className="tnum font-[family-name:var(--font-manrope)] text-[32px] font-bold leading-none"
         style={{ color: TONES[tone] }}
       >
         {value}
       </p>
-      <p className="mt-2 text-sm font-medium">{label}</p>
+      <p className="mt-1.5 text-sm font-medium">{label}</p>
       {hint ? <p className="mt-1 text-xs text-[var(--ink-muted)]">{hint}</p> : null}
     </div>
   );
@@ -98,9 +100,13 @@ export function LinkButton({
   );
 }
 
-/** Involucro tabella: scroll orizzontale sotto i 900px senza rompere il layout. */
+/**
+ * Involucro tabella: è l'unico elemento che scorre in orizzontale. Serve anche a
+ * isolare la larghezza minima della tabella dal resto della pagina, che non deve mai
+ * poter scorrere lateralmente.
+ */
 export function TableWrap({ children }: { children: ReactNode }) {
-  return <div className="overflow-x-auto">{children}</div>;
+  return <div className="w-full max-w-full overflow-x-auto overscroll-x-contain">{children}</div>;
 }
 
 export function Th({
@@ -113,11 +119,56 @@ export function Th({
   return (
     <th
       scope="col"
-      className={`px-5 py-3 text-xs font-medium text-[var(--ink-muted)] ${
+      className={`px-4 py-2.5 text-xs font-medium text-[var(--ink-muted)] ${
         align === "right" ? "text-right" : "text-left"
       }`}
     >
       {children}
+    </th>
+  );
+}
+
+/**
+ * Intestazione ordinabile: un link, non un bottone, così l'ordinamento resta
+ * nell'URL ed è condivisibile, e funziona anche senza JavaScript.
+ * L'indicatore di direzione è informativo, non decorativo: le guidelines
+ * vietano le frecce ornamentali sui link, non i segni che portano un dato.
+ */
+export function SortableTh({
+  children,
+  sortKey,
+  current,
+  hrefFor,
+  align = "left",
+}: {
+  children: ReactNode;
+  sortKey: string;
+  current: SortState;
+  hrefFor: (key: string) => string;
+  align?: "left" | "right";
+}) {
+  const active = current.key === sortKey;
+  const ascending = current.dir === "asc";
+
+  return (
+    <th
+      scope="col"
+      aria-sort={active ? (ascending ? "ascending" : "descending") : "none"}
+      className={`px-4 py-2.5 text-xs font-medium text-[var(--ink-muted)] ${
+        align === "right" ? "text-right" : "text-left"
+      }`}
+    >
+      <Link
+        href={hrefFor(sortKey)}
+        className={`inline-flex items-center gap-1 rounded-[var(--radius)] underline-offset-2 hover:underline ${
+          active ? "text-[var(--ink-navy)]" : ""
+        }`}
+      >
+        {children}
+        <span aria-hidden className={active ? "" : "opacity-0"}>
+          {ascending ? "↑" : "↓"}
+        </span>
+      </Link>
     </th>
   );
 }
@@ -133,7 +184,7 @@ export function Td({
 }) {
   return (
     <td
-      className={`px-5 py-3 align-middle ${align === "right" ? "text-right" : "text-left"} ${className}`}
+      className={`px-4 py-2 align-middle ${align === "right" ? "text-right" : "text-left"} ${className}`}
     >
       {children}
     </td>
@@ -142,27 +193,32 @@ export function Td({
 
 export function EmptyState({ title, children }: { title: string; children?: ReactNode }) {
   return (
-    <div className="px-5 py-10 text-center">
+    <div className="px-4 py-8 text-center">
       <p className="font-[family-name:var(--font-manrope)] text-[18px] font-semibold">{title}</p>
       {children ? (
-        <div className="mx-auto mt-2 max-w-md text-sm text-[var(--ink-muted)]">{children}</div>
+        <div className="mx-auto mt-2 max-w-md text-sm break-words text-[var(--ink-muted)]">{children}</div>
       ) : null}
     </div>
   );
 }
 
 /**
- * Segno del servizio: cerchio Surface con l'iniziale, coerente con le icone
- * lineari in cerchi del riferimento. Identifica il servizio, non decora (§6).
+ * Segno del servizio: logo in un cerchio Surface, o l'iniziale se il servizio
+ * non ha un'immagine. Identifica il servizio, non decora (§6), quindi l'immagine
+ * è `aria-hidden`: il nome accanto è già l'etichetta leggibile.
  */
-export function ServiceMark({ name }: { name: string }) {
+export function ServiceMark({ name, logo }: { name: string; logo?: string | null }) {
   return (
     <span className="inline-flex items-center gap-2">
       <span
         aria-hidden
-        className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--surface)] font-[family-name:var(--font-manrope)] text-xs font-semibold text-[var(--ink-muted)]"
+        className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--surface)] font-[family-name:var(--font-manrope)] text-xs font-semibold text-[var(--ink-muted)]"
       >
-        {name.slice(0, 1).toUpperCase()}
+        {logo ? (
+          <Image src={logo} alt="" width={24} height={24} className="h-full w-full object-contain" />
+        ) : (
+          name.slice(0, 1).toUpperCase()
+        )}
       </span>
       <span>{name}</span>
     </span>

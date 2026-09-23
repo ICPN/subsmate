@@ -77,7 +77,7 @@ export function ServiceForm({
             min={1}
             max={31}
             name="billingDayOfMonth"
-            defaultValue={initialValues?.billingDayOfMonth ?? 1}
+            defaultValue={initialValues?.billingDayOfMonth ?? 18}
             required
           />
         </Field>

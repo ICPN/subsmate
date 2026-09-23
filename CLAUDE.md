@@ -99,19 +99,35 @@ sufficiente da solo.
 - Gli account si creano solo con `python execution/seed_admin.py`. Non esistono registrazione,
   inviti o reset self-service, ed è una scelta: vedi la spec in `docs/superpowers/specs/`.
 
-## Ambiente: MongoDB Atlas non è raggiungibile
+## Ambiente: il database è MongoDB Atlas
 
-La rete ICPN blocca la porta 27017 in uscita, verso qualsiasi host. Lo sviluppo avviene su
-MongoDB Community locale (servizio Windows `MongoDB` su `127.0.0.1:27017`).
-`frontend/.env.local` contiene entrambe le URI, con quella Atlas commentata.
+Il database di riferimento è il cluster Atlas `cluster-icpn-subs`, database `subsmate`.
+La configurazione dell'app sta in **`frontend/.env.local`**, da creare copiando
+`.env.example`: Next.js carica i file d'ambiente solo dalla propria directory di progetto,
+quindi una `.env` nella root **non viene letta** e lascia `MONGODB_URI` indefinita. La
+`.env` di root serve solo agli script Python di `execution/`, che caricano prima
+`frontend/.env.local` e poi lei.
 
-Se una connessione fallisce con TLS resettato su tutti i nodi, **non concludere che sia
-l'IP non autorizzato in Atlas**: lancia `execution/check_db_connection.py`, che distingue
-il blocco di rete dal rifiuto di Atlas. La diagnosi sbagliata è già costata un giro a
-vuoto ed è documentata in `directives/setup_ambiente.md`.
+`frontend/.env.local` contiene l'URI Atlas attiva; quella del MongoDB Community locale
+(servizio Windows `MongoDB` su `127.0.0.1:27017`) resta commentata come ripiego offline.
+Il nome del database sta in `MONGODB_DB`, non nell'URI: non aggiungerlo al path della
+stringa di connessione, verrebbe ignorato (`lib/mongodb.ts` lo passa come `dbName`).
+
+La rete ICPN bloccava la porta 27017 in uscita e per questo si è sviluppato a lungo in
+locale. **Il blocco non c'è più**: DNS SRV, TCP 27017 sui tre nodi, TLS 1.3 e
+autenticazione SCRAM passano. Se una connessione fallisce con TLS resettato su tutti i
+nodi il blocco è tornato, e **non va scambiato per un IP non autorizzato in Atlas**:
+lancia `execution/check_db_connection.py`, che distingue i due casi. La diagnosi sbagliata
+è già costata un giro a vuoto ed è documentata in `directives/setup_ambiente.md`.
 
 Le credenziali Atlas stanno in `atlas-credentials.env`, coperto dalla regola `*.env` in
 `.gitignore` (`.env` da solo non lo intercetterebbe).
+
+Su questa macchina **non sono installati né Python né i MongoDB Database Tools**
+(`mongorestore`, `mongoimport`): gli script in `execution/` non sono eseguibili così com'è,
+e un restore da dump BSON va fatto con il driver Node. I dati attuali di Atlas provengono
+da `dump/subsmate/` importato in questo modo; `dump/` non va committato, contiene l'hash
+della password admin.
 
 ## UI
 
