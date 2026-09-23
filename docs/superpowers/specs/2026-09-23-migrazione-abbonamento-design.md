@@ -247,17 +247,6 @@ Nessuna pagina nuova. Il flusso vive dove vive già l'abbonamento.
 Il saldo e la sua scomposizione si mostrano con `tabular-nums`, in italiano, con stati
 espliciti nel tono già in uso («Migrazione fra 8 giorni», non «Attenzione richiesta»).
 
-## Verifica
-
-Non esiste un framework di test nel repo. La verifica è quella già in uso:
-
-1. `npx tsc --noEmit` e `npm run lint`.
-2. Le funzioni pure di `lib/migration.ts` provate con `node file.mts` su casi costruiti a
-   mano: credito zero per accavallamento, un mese residuo, saldo negativo, decorrenza dopo
-   la scadenza.
-3. Le rotte chiamate via HTTP con una sessione firmata a mano, contro `subsmate_dev`.
-4. Prova manuale in browser dell'anteprima del saldo, che è l'unica parte interattiva.
-
 ## Fuori scope
 
 Invio di email o notifiche push. Esecuzione automatica alla decorrenza. Cambio di
