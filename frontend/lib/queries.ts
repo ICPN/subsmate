@@ -231,6 +231,17 @@ export async function listPayments(limit?: number) {
   return (limit ? query.limit(limit) : query).lean();
 }
 
+/** Riga della ripartizione per servizio mostrata in dashboard. */
+export interface DashboardServiceRow {
+  _id: string;
+  name: string;
+  slug: string;
+  logo: string | null;
+  activeSubscriptions: number;
+  dueThisCycle: number;
+  late: number;
+}
+
 /** Aggregati della dashboard: totali del ciclo, contatori di stato, lista da seguire. */
 export async function getDashboardData() {
   const subscriptions = await listSubscriptions();
@@ -250,14 +261,54 @@ export async function getDashboardData() {
     { $group: { _id: null, total: { $sum: "$donationAmount" }, collected: { $sum: "$amount" } } },
   ]);
 
+  // Ripartizione per servizio: la domanda è «quanto ci costa Claude rispetto
+  // a ChatGPT», e la risposta va derivata qui come tutto il resto. Solo gli
+  // attivi, come il dovuto del ciclo: un cessato non costa più nulla.
+  const byServiceMap = new Map<string, DashboardServiceRow>();
+  for (const sub of active) {
+    if (!sub.service) continue;
+    const key = String(sub.service._id);
+    const row =
+      byServiceMap.get(key) ??
+      {
+        _id: key,
+        name: sub.service.name,
+        slug: sub.service.slug,
+        logo: sub.service.logo,
+        activeSubscriptions: 0,
+        dueThisCycle: 0,
+        late: 0,
+      };
+    row.activeSubscriptions += 1;
+    row.dueThisCycle = round2(row.dueThisCycle + sub.computed.totalDue);
+    if (sub.computed.status === "in_ritardo") row.late += 1;
+    byServiceMap.set(key, row);
+  }
+
+  const [recentPayments, peopleCount, activeServicesCount] = await Promise.all([
+    listPayments(5),
+    Person.estimatedDocumentCount(),
+    Service.countDocuments({ active: true }),
+  ]);
+
   return {
     totals: {
       subscriptions: subscriptions.length,
       activeSubscriptions: active.length,
       dueThisCycle: round2(active.reduce((sum, s) => sum + s.computed.totalDue, 0)),
+      // Quanto manca davvero: il dovuto pieno non tiene conto dei versamenti
+      // parziali già incassati, ed è un numero più alto che non corrisponde
+      // a niente che si possa ancora chiedere a qualcuno.
+      outstanding: round2(active.reduce((sum, s) => sum + s.computed.outstanding, 0)),
       donationsCollected: round2(donations?.total ?? 0),
       totalCollected: round2(donations?.collected ?? 0),
     },
+    byService: [...byServiceMap.values()].sort((a, b) => b.dueThisCycle - a.dueThisCycle),
+    recentPayments,
+    // Solo le pianificate: le eseguite sono storia, e l'avviso serve a
+    // ricordare che qualcosa va fatto a mano prima della decorrenza.
+    plannedMigrations: subscriptions.filter((sub) => sub.migration?.status === "pianificata"),
+    registry: { people: peopleCount, activeServices: activeServicesCount },
     counters: {
       in_ritardo: late.length,
       in_scadenza: dueSoon.length,

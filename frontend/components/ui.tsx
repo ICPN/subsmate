@@ -50,11 +50,14 @@ export function StatCard({
   value,
   hint,
   tone = "default",
+  href,
 }: {
   label: string;
   value: string;
   hint?: string;
   tone?: "default" | "ok" | "warn" | "critical" | "neutral";
+  /** Pagina di gestione che risponde al numero. Senza, il riquadro non è cliccabile. */
+  href?: string;
 }) {
   const TONES = {
     default: "var(--ink-navy)",
@@ -64,8 +67,15 @@ export function StatCard({
     neutral: "var(--status-neutral)",
   } as const;
 
-  return (
-    <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] px-4 py-5 text-center">
+  const base =
+    "block rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] px-4 py-5 text-center";
+  // Il feedback del click è bordo e sfondo, mai uno dei quattro colori di
+  // stato: quelli restano riservati allo stato di un abbonamento.
+  const interattivo =
+    " transition-colors hover:border-[var(--ink-navy)] hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ink-navy)]";
+
+  const contenuto = (
+    <>
       <p
         className="tnum font-[family-name:var(--font-manrope)] text-[32px] font-bold leading-none"
         style={{ color: TONES[tone] }}
@@ -74,7 +84,14 @@ export function StatCard({
       </p>
       <p className="mt-1.5 text-sm font-medium">{label}</p>
       {hint ? <p className="mt-1 text-xs text-[var(--ink-muted)]">{hint}</p> : null}
-    </div>
+    </>
+  );
+
+  if (!href) return <div className={base}>{contenuto}</div>;
+  return (
+    <Link href={href} className={base + interattivo}>
+      {contenuto}
+    </Link>
   );
 }
 
