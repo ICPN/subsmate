@@ -73,6 +73,7 @@ export function MigrationForm({
         closeOld,
         oldNextDueDate: oldNextDueDate ? new Date(oldNextDueDate) : null,
         oldMonthlyRate,
+        oldPeriodicity: periodicity,
         oldPaidForCurrentCycle,
         newMonthlyRate: target.monthlyRate,
         newPeriodicity: toPeriodicity,

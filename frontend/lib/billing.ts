@@ -124,6 +124,8 @@ export interface SubscriptionComputation {
 /** Pagamento, ridotto ai campi che servono al calcolo del saldo. */
 export interface PaymentForBalance {
   amount: number;
+  /** Quando è stato versato: da qui si ricava il periodo se non è salvato. */
+  paidAt?: Date | string | null;
   periodEnd?: Date | string | null;
 }
 
@@ -145,11 +147,25 @@ function isSameDay(a: Date, b: Date): boolean {
  * medesimo `periodEnd`. Serve a sommare più versamenti parziali dello stesso
  * ciclo senza confonderli con quelli dei cicli precedenti.
  */
-export function paidForCycle(payments: PaymentForBalance[], due: Date | null): number {
+export function paidForCycle(
+  payments: PaymentForBalance[],
+  due: Date | null,
+  periodicity: Periodicity,
+  billingDayOfMonth?: number | null
+): number {
   if (!due) return 0;
   const total = payments.reduce((sum, payment) => {
-    if (!payment.periodEnd) return sum;
-    return isSameDay(new Date(payment.periodEnd), due) ? sum + payment.amount : sum;
+    // periodEnd è calcolabile da paidAt: salvarlo è una comodità, non la
+    // fonte di verità. Le righe importate dal Google Sheet non ce l'hanno, e
+    // fidarsi del campo le rendeva invisibili al calcolo — l'abbonamento
+    // risultava non pagato e un'eventuale migrazione non maturava credito.
+    const end = payment.periodEnd
+      ? new Date(payment.periodEnd)
+      : payment.paidAt
+        ? coveredPeriod(new Date(payment.paidAt), periodicity, billingDayOfMonth).periodEnd
+        : null;
+    if (!end) return sum;
+    return isSameDay(end, due) ? sum + payment.amount : sum;
   }, 0);
   return round2(total);
 }
@@ -177,7 +193,12 @@ export function computeSubscription(
     input.billingDayOfMonth
   );
   const dueTotal = totalDue(input.monthlyRate, input.periodicity, donation);
-  const paid = paidForCycle(input.payments ?? [], due);
+  const paid = paidForCycle(
+    input.payments ?? [],
+    due,
+    input.periodicity,
+    input.billingDayOfMonth
+  );
   return {
     serviceQuota: serviceQuota(input.monthlyRate, input.periodicity),
     donationSupplement: donation,

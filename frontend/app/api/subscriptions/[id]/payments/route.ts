@@ -68,7 +68,7 @@ async function handlePOST(request: Request, { params }: Context) {
     // caso è la norma e non l'eccezione.
     const esistenti = await Payment.find(
       { subscription: id },
-      { amount: 1, periodEnd: 1 }
+      { amount: 1, paidAt: 1, periodEnd: 1 }
     ).lean();
     const scadenzaCorrente = nextDueDate(
       subscription.lastPaymentDate,
@@ -79,9 +79,12 @@ async function handlePOST(request: Request, { params }: Context) {
     const giaIncassato = paidForCycle(
       esistenti.map((existing) => ({
         amount: existing.amount,
+        paidAt: existing.paidAt ?? null,
         periodEnd: existing.periodEnd ?? null,
       })),
-      scadenzaCorrente
+      scadenzaCorrente,
+      subscription.periodicity,
+      subscription.service?.billingDayOfMonth
     );
     const dovutoCiclo = totalDue(
       monthlyRate,

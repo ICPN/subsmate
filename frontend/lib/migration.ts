@@ -74,6 +74,8 @@ export interface MigrationBalanceInput {
   /** Scadenza corrente del vecchio abbonamento, da computeSubscription. */
   oldNextDueDate: Date | null | undefined;
   oldMonthlyRate: number;
+  /** Periodicità del vecchio abbonamento: serve a ripartire la donazione. */
+  oldPeriodicity: Periodicity;
   /** Quanto è stato davvero incassato per il ciclo in corso del vecchio. */
   oldPaidForCurrentCycle: number;
   newMonthlyRate: number;
@@ -83,6 +85,8 @@ export interface MigrationBalanceInput {
 
 export interface MigrationBalance {
   creditMonths: number;
+  /** Valore di un mese di credito: quota del servizio + quota di donazione. */
+  creditMonthlyRate: number;
   /** Credito riconosciuto, mai superiore a quanto incassato. */
   creditAmount: number;
   /** Dovuto pieno per il primo ciclo del nuovo abbonamento. */
@@ -121,8 +125,16 @@ export interface MigrationBalance {
 export function migrationBalance(input: MigrationBalanceInput): MigrationBalance {
   const donation = input.donationSupplement ?? 0;
   const months = creditMonths(input.effectiveDate, input.oldNextDueDate, input.closeOld);
+  // Un mese di credito vale quanto la persona versa davvero ogni mese: la
+  // quota del servizio più la parte mensile del supplemento donazione. Anche
+  // la donazione è denaro già incassato, e non consumarla la rende
+  // recuperabile come il resto — chi paga 30 € a trimestre ha un mese da 10 €,
+  // non da 8,50.
+  const creditMonthlyRate = round2(
+    input.oldMonthlyRate + donation / PERIOD_MONTHS[input.oldPeriodicity]
+  );
   const creditAmount = round2(
-    Math.min(months * input.oldMonthlyRate, Math.max(0, input.oldPaidForCurrentCycle))
+    Math.min(months * creditMonthlyRate, Math.max(0, input.oldPaidForCurrentCycle))
   );
 
   const cycleMonths = PERIOD_MONTHS[input.newPeriodicity];
@@ -152,6 +164,7 @@ export function migrationBalance(input: MigrationBalanceInput): MigrationBalance
 
   return {
     creditMonths: months,
+    creditMonthlyRate,
     creditAmount,
     newTotal,
     saldo,

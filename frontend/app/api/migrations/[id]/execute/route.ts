@@ -59,7 +59,7 @@ async function handlePOST(_request: Request, { params }: Context) {
 
     const oldPayments = await Payment.find(
       { subscription: oldSubscription._id },
-      { amount: 1, periodEnd: 1 }
+      { amount: 1, paidAt: 1, periodEnd: 1 }
     ).lean();
 
     const now = new Date();
@@ -74,6 +74,7 @@ async function handlePOST(_request: Request, { params }: Context) {
         billingDayOfMonth: oldService?.billingDayOfMonth,
         payments: oldPayments.map((payment) => ({
           amount: payment.amount,
+          paidAt: payment.paidAt ?? null,
           periodEnd: payment.periodEnd ?? null,
         })),
       },
@@ -89,6 +90,7 @@ async function handlePOST(_request: Request, { params }: Context) {
       closeOld: migration.closeOld,
       oldNextDueDate: oldComputed.nextDueDate,
       oldMonthlyRate: oldService?.monthlyRate ?? 0,
+      oldPeriodicity: oldSubscription.periodicity,
       oldPaidForCurrentCycle: oldComputed.paidForCurrentCycle,
       newMonthlyRate: newService.monthlyRate,
       newPeriodicity: newPeriodicity,
@@ -198,7 +200,9 @@ async function handlePOST(_request: Request, { params }: Context) {
       await Migration.findByIdAndUpdate(id, {
         toSubscription: newSubscription._id,
         creditMonths: balance.creditMonths,
-        creditMonthlyRate: oldService?.monthlyRate ?? 0,
+        // Il valore di un mese come è stato riconosciuto, donazione
+        // compresa: la sola tariffa del servizio non lo ricostruirebbe.
+        creditMonthlyRate: balance.creditMonthlyRate,
         // Il netto davvero riconosciuto, che il cap su quanto era stato
         // incassato può rendere inferiore a creditMonths × tariffa.
         creditAmount: balance.creditAmount,

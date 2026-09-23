@@ -50,6 +50,9 @@ ciò che rompeva il Google Sheet — mai campi `status` o `nextDueDate` sugli sc
 - `lib/billing.ts` = funzioni pure con `now` come parametro. Mantienile testabili così.
 - Un `paidAt` precedente all'ultimo non fa arretrare `lastPaymentDate`: la scadenza
   tornerebbe indietro e l'abbonamento risulterebbe in falso ritardo.
+- Anche `periodEnd` di un `Payment` è calcolabile da `paidAt`: `paidForCycle` se lo ricava
+  quando manca, e non va trattato come fonte di verità. Le righe importate dal Google
+  Sheet non ce l'hanno — fidarsene le rendeva invisibili al calcolo del ciclo.
 - `DUE_SOON_DAYS = 15` viene dalle brand guidelines, non è arbitrario.
 - `frontend/lib/queries.ts` è l'unica fonte di lettura: Server Component e route handler
   la chiamano. **Le pagine non chiamano le proprie API via HTTP.** Letture nuove vanno lì.
@@ -62,8 +65,11 @@ ricostruire poi il conto. Spec:
 `docs/superpowers/specs/2026-09-23-migrazione-abbonamento-design.md`.
 
 - **Un ciclo pagato non si rimborsa in denaro.** Il credito nasce solo dai mesi interi
-  pagati e non consumati, limitato a quanto incassato davvero: `creditMonths` × tariffa è
-  il massimo teorico, non il netto.
+  pagati e non consumati, limitato a quanto incassato davvero: `creditMonths` ×
+  `creditMonthlyRate` è il massimo teorico, non il netto.
+- **Un mese di credito vale quanto la persona versa al mese, donazione compresa**
+  (`oldMonthlyRate + donationSupplement / mesi del ciclo`): chi paga 30 € a trimestre ha un
+  mese da 10 €, non da 8,50. Anche la donazione è denaro incassato e non consumato.
 - **`closeOld` distingue chiusura anticipata e accavallamento voluto**, non la data: con
   `a_scadenza` il vecchio resta attivo fino alla scadenza e il credito è zero per scelta.
 - **Il credito è un `Payment` con `kind: "credito_migrazione"`**, non un campo: così

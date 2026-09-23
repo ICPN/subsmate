@@ -81,15 +81,22 @@ export async function listSubscriptions(
   // I pagamenti servono a sapere quanto è già stato incassato per il ciclo in
   // corso: un versamento parziale non chiude il ciclo, e va segnalato. Una sola
   // query per tutti gli abbonamenti invece di una per riga.
-  const paymentsBySubscription = new Map<string, { amount: number; periodEnd: Date | null }[]>();
+  const paymentsBySubscription = new Map<
+    string,
+    { amount: number; paidAt: Date | null; periodEnd: Date | null }[]
+  >();
   const payments = await Payment.find(
     { subscription: { $in: subscriptions.map((sub) => sub._id) } },
-    { subscription: 1, amount: 1, periodEnd: 1 }
+    { subscription: 1, amount: 1, paidAt: 1, periodEnd: 1 }
   ).lean();
   for (const payment of payments) {
     const key = String(payment.subscription);
     const list = paymentsBySubscription.get(key) ?? [];
-    list.push({ amount: payment.amount, periodEnd: payment.periodEnd ?? null });
+    list.push({
+      amount: payment.amount,
+      paidAt: payment.paidAt ?? null,
+      periodEnd: payment.periodEnd ?? null,
+    });
     paymentsBySubscription.set(key, list);
   }
 
@@ -167,6 +174,7 @@ export async function listSubscriptions(
                   closeOld: raw.closeOld,
                   oldNextDueDate: computed.nextDueDate,
                   oldMonthlyRate: service?.monthlyRate ?? 0,
+                  oldPeriodicity: sub.periodicity,
                   oldPaidForCurrentCycle: computed.paidForCurrentCycle,
                   newMonthlyRate: toService.monthlyRate,
                   newPeriodicity: raw.toPeriodicity ?? sub.periodicity,
