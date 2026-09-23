@@ -5,6 +5,7 @@ import Image from "next/image";
 import { inputClass } from "@/components/form";
 import { buttonSecondary } from "@/components/ui";
 import { formatEUR } from "@/lib/billing";
+import { matchesQuery } from "@/lib/search";
 import type { PaymentSubscriptionOption } from "@/components/RegisterPaymentForm";
 
 /**
@@ -20,13 +21,6 @@ import type { PaymentSubscriptionOption } from "@/components/RegisterPaymentForm
  * elementi sovrapposti.
  */
 
-/** Minuscole e senza accenti: cercare "nicolo" deve trovare "Nicolò". */
-function normalize(value: string): string {
-  return value
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "");
-}
 
 export function SubscriptionPicker({
   options,
@@ -45,17 +39,13 @@ export function SubscriptionPicker({
 
   const selected = options.find((option) => option._id === value) ?? null;
 
-  const matches = useMemo(() => {
-    const needle = normalize(query.trim());
-    if (!needle) return options;
-    const words = needle.split(/\s+/);
-    return options.filter((option) => {
-      const haystack = normalize(
-        `${option.personName} ${option.email} ${option.serviceName}`
-      );
-      return words.every((word) => haystack.includes(word));
-    });
-  }, [options, query]);
+  const matches = useMemo(
+    () =>
+      options.filter((option) =>
+        matchesQuery([option.personName, option.email, option.serviceName], query)
+      ),
+    [options, query]
+  );
 
   function choose(option: PaymentSubscriptionOption) {
     onChange(option._id);

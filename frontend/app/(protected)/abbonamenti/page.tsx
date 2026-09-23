@@ -1,13 +1,11 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { listSubscriptions, listServices, listPeople, type SubscriptionView } from "@/lib/queries";
-import { NewSubscriptionButton, SubscriptionRowActions } from "@/components/SubscriptionActions";
+import { NewSubscriptionButton } from "@/components/SubscriptionActions";
 import { PageHeader } from "@/components/PageHeader";
-import { StatusBadge, Pill } from "@/components/StatusBadge";
-import { Card, TableWrap, Th, SortableTh, Td, EmptyState, ServiceMark } from "@/components/ui";
-import { MigrationBadge } from "@/components/MigrationBadge";
-import { parseSort, sortRows, sortHrefBuilder, type SortValue } from "@/lib/sorting";
-import { formatEUR, formatDate, toDateInputValue, type PaymentStatus } from "@/lib/billing";
+import { SubscriptionsTable } from "@/components/SubscriptionsTable";
+import { parseSort, sortRows, type SortValue } from "@/lib/sorting";
+import { type PaymentStatus } from "@/lib/billing";
 
 export const dynamic = "force-dynamic";
 
@@ -50,10 +48,16 @@ const SORT_ACCESSORS: Record<string, (sub: SubscriptionView) => SortValue> = {
 export default async function SubscriptionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; service?: string; sort?: string; dir?: string }>;
+  searchParams: Promise<{
+    status?: string;
+    service?: string;
+    sort?: string;
+    dir?: string;
+    q?: string;
+  }>;
 }) {
   await requireAdmin("/abbonamenti");
-  const { status, service, sort, dir } = await searchParams;
+  const { status, service, sort, dir, q } = await searchParams;
   const [allSubscriptions, services, people] = await Promise.all([
     listSubscriptions(service ? { service } : {}),
     listServices(),
@@ -83,11 +87,14 @@ export default async function SubscriptionsPage({
     dir: "asc",
   });
   const subscriptions = sortRows(filtered, SORT_ACCESSORS[currentSort.key], currentSort.dir);
-  const sortHref = sortHrefBuilder("/abbonamenti", { status, service }, currentSort);
 
+  // La ricerca testuale non viene applicata qui: la applica il componente
+  // dell'elenco, che gira anche sul server al primo render e quindi produce
+  // già l'HTML giusto per un link con `?q=`, poi continua a filtrare nel
+  // browser mentre si scrive.
   const buildHref = (next: Record<string, string | undefined>) => {
     const params = new URLSearchParams();
-    const merged = { status, service, sort, dir, ...next };
+    const merged = { status, service, sort, dir, q, ...next };
     for (const [key, value] of Object.entries(merged)) {
       if (value && value !== "tutti") params.set(key, value);
     }
@@ -98,7 +105,7 @@ export default async function SubscriptionsPage({
   return (
     // La tabella ha nove colonne: da lg in su recupera larghezza sfondando i margini
     // laterali del contenitore. I valori restano sotto la larghezza del breakpoint
-    // corrispondente, quindi la pagina non può mai scorrere in orizzontale.
+    // corrispondente, quindi la pagina non può mai scorrere in orizzontale.
     <div className="space-y-6 lg:-mx-4 xl:-mx-10 2xl:-mx-32">
       <PageHeader
         title="Abbonamenti"
@@ -130,146 +137,14 @@ export default async function SubscriptionsPage({
         ) : null}
       </div>
 
-      <Card
-        action={
-          <span className="text-xs text-[var(--ink-muted)]">
-            {subscriptions.length} di {allSubscriptions.length} abbonamenti
-          </span>
-        }
-        title="Elenco"
-      >
-        {subscriptions.length === 0 ? (
-          <EmptyState title="Nessun abbonamento da mostrare">
-            {allSubscriptions.length === 0 ? (
-              <>
-                Importa i dati esistenti dal Google Sheet con{" "}
-                <code className="font-mono text-xs">execution/import_subs_from_sheet.py</code>,
-                oppure creane uno con <code className="font-mono text-xs">POST /api/subscriptions</code>.
-              </>
-            ) : (
-              "Nessun abbonamento corrisponde ai filtri selezionati."
-            )}
-          </EmptyState>
-        ) : (
-          <TableWrap>
-            <table className="w-full border-collapse">
-              <thead className="border-b border-[var(--border)]">
-                <tr>
-                  <SortableTh sortKey="persona" current={currentSort} hrefFor={sortHref}>
-                    Persona
-                  </SortableTh>
-                  <SortableTh sortKey="servizio" current={currentSort} hrefFor={sortHref}>
-                    Servizio
-                  </SortableTh>
-                  <SortableTh sortKey="periodicita" current={currentSort} hrefFor={sortHref}>
-                    Periodicità
-                  </SortableTh>
-                  <SortableTh sortKey="quota" current={currentSort} hrefFor={sortHref} align="right">
-                    Quota
-                  </SortableTh>
-                  <SortableTh
-                    sortKey="donazione"
-                    current={currentSort}
-                    hrefFor={sortHref}
-                    align="right"
-                  >
-                    Donazione
-                  </SortableTh>
-                  <SortableTh
-                    sortKey="totale"
-                    current={currentSort}
-                    hrefFor={sortHref}
-                    align="right"
-                  >
-                    Totale
-                  </SortableTh>
-                  <SortableTh sortKey="scadenza" current={currentSort} hrefFor={sortHref}>
-                    Scadenza
-                  </SortableTh>
-                  <SortableTh sortKey="stato" current={currentSort} hrefFor={sortHref}>
-                    Stato
-                  </SortableTh>
-                  <Th align="right">Azioni</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {subscriptions.map((sub) => (
-                  <tr
-                    key={String(sub._id)}
-                    className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--surface)]"
-                  >
-                    <Td>
-                      <Link
-                        href={`/abbonamenti/${sub._id}`}
-                        className="font-medium underline-offset-2 hover:underline"
-                      >
-                        {sub.person ? `${sub.person.firstName} ${sub.person.lastName}` : "—"}
-                      </Link>
-                      <span className="block text-xs text-[var(--ink-muted)]">
-                        {sub.person?.email}
-                      </span>
-                    </Td>
-                    <Td>
-                      {sub.service ? (
-                        <ServiceMark name={sub.service.name} logo={sub.service.logo} />
-                      ) : (
-                        "—"
-                      )}
-                      <MigrationBadge alert={sub.migration?.alert ?? null} />
-                    </Td>
-                    <Td>
-                      <Pill>{PERIODICITY_LABELS[sub.periodicity] ?? sub.periodicity}</Pill>
-                    </Td>
-                    <Td align="right" className="tnum">
-                      {formatEUR(sub.computed.serviceQuota)}
-                    </Td>
-                    <Td align="right" className="tnum">
-                      {sub.computed.donationSupplement > 0
-                        ? formatEUR(sub.computed.donationSupplement)
-                        : "—"}
-                    </Td>
-                    <Td align="right" className="tnum font-medium">
-                      {formatEUR(sub.computed.totalDue)}
-                      {sub.computed.outstanding > 0 ? (
-                        <span
-                          className="block text-xs font-medium"
-                          style={{ color: "var(--status-warn)" }}
-                        >
-                          mancano {formatEUR(sub.computed.outstanding)}
-                        </span>
-                      ) : null}
-                    </Td>
-                    <Td className="tnum whitespace-nowrap">
-                      {formatDate(sub.computed.nextDueDate)}
-                    </Td>
-                    <Td>
-                      <StatusBadge status={sub.computed.status} />
-                    </Td>
-                    <Td align="right">
-                      <SubscriptionRowActions
-                        subscription={{
-                          _id: String(sub._id),
-                          person: sub.person ? String(sub.person._id) : "",
-                          personLabel: sub.person
-                            ? `${sub.person.firstName} ${sub.person.lastName} — ${sub.person.email}`
-                            : "Persona rimossa",
-                          service: sub.service ? String(sub.service._id) : "",
-                          serviceLabel: sub.service?.name ?? "Servizio rimosso",
-                          periodicity: sub.periodicity,
-                          donationSupplement: sub.donationSupplement,
-                          onboardingStatus: sub.onboardingStatus,
-                          startDate: toDateInputValue(sub.startDate),
-                          notes: sub.notes ?? "",
-                        }}
-                      />
-                    </Td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </TableWrap>
-        )}
-      </Card>
+      <SubscriptionsTable
+        rows={subscriptions}
+        totalCount={allSubscriptions.length}
+        initialQuery={q ?? ""}
+        currentSort={currentSort}
+        sortParams={{ status, service }}
+        hasFilters={Boolean((status && status !== "tutti") || service)}
+      />
     </div>
   );
 }

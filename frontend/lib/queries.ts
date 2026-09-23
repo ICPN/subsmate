@@ -189,9 +189,19 @@ export async function listSubscriptions(
         }
       : null;
 
+    // Gli _id vanno convertiti a mano, come già per la migrazione: lo spread
+    // copia gli ObjectId del driver, che hanno un toJSON e non attraversano il
+    // confine verso un Client Component (l'elenco con la ricerca). Il
+    // typecheck non se ne accorge perché il documento lean è castato a
+    // SubscriptionView, che li dichiara già stringhe.
+    const person = sub.person as unknown as SubscriptionView["person"];
     return {
       ...(sub as unknown as SubscriptionView),
-      service: service ? { ...service, logo: serviceLogoFor(service.slug) } : null,
+      _id: String(sub._id),
+      person: person ? { ...person, _id: String(person._id) } : null,
+      service: service
+        ? { ...service, _id: String(service._id), logo: serviceLogoFor(service.slug) }
+        : null,
       computed,
       migration,
     };

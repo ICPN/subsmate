@@ -56,6 +56,15 @@ ciò che rompeva il Google Sheet — mai campi `status` o `nextDueDate` sugli sc
 - `DUE_SOON_DAYS = 15` viene dalle brand guidelines, non è arbitrario.
 - `frontend/lib/queries.ts` è l'unica fonte di lettura: Server Component e route handler
   la chiamano. **Le pagine non chiamano le proprie API via HTTP.** Letture nuove vanno lì.
+- Le viste di `queries.ts` dichiarano gli `_id` come `string` ma nascono da un documento
+  `lean()` castato: **ogni `_id` va convertito a mano**, anche quelli dei campi popolati.
+  Il typecheck non vede la differenza, e un ObjectId ha un `toJSON`, quindi non attraversa
+  il confine verso un Client Component — l'errore non fa fallire la pagina, compare solo
+  nel log. È già successo due volte, con la migrazione e con l'elenco abbonamenti.
+- La ricerca testuale degli elenchi è `lib/search.ts` (`normalize` + `matchesQuery`): una
+  regola sola per il picker dei pagamenti e per l'elenco abbonamenti. Filtra nel browser
+  perché le pagine caricano comunque tutte le righe, e il testo cercato finisce nell'URL
+  con `replaceState`, non con una navigazione per tasto premuto.
 
 ## Migrazione fra servizi
 
