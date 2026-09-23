@@ -131,7 +131,17 @@ export async function listSubscriptions(
     const migration: MigrationView | null = raw
       ? {
           _id: String(raw._id),
-          toService: toService ? { ...toService, logo: serviceLogoFor(toService.slug) } : null,
+          // _id va convertito a mano: lo spread copia l'ObjectId del driver,
+          // che ha un toJSON e non attraversa il confine verso un Client
+          // Component (il banner). Il typecheck non lo vede perche il
+          // documento lean e castato a MigrationView["toService"].
+          toService: toService
+            ? {
+                ...toService,
+                _id: String(toService._id),
+                logo: serviceLogoFor(toService.slug),
+              }
+            : null,
           effectiveDate: raw.effectiveDate,
           closeOld: raw.closeOld,
           status: raw.status,
