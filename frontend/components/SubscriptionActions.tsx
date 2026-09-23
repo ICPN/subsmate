@@ -85,8 +85,13 @@ export function SubscriptionRowActions({
         return;
       }
       const body = await response.json().catch(() => null);
-      const payments = (body?.data?.payments ?? []) as { amount: number }[];
-      const total = payments.reduce((sum, payment) => sum + payment.amount, 0);
+      // Il credito di migrazione non e denaro incassato: sommarlo qui
+      // gonfierebbe il "totale storico" mostrato proprio mentre si decide se
+      // cancellare. E l'unico aggregato di denaro che lo contava ancora.
+      const payments = (body?.data?.payments ?? []) as { amount: number; kind?: string }[];
+      const total = payments
+        .filter((payment) => payment.kind !== "credito_migrazione")
+        .reduce((sum, payment) => sum + payment.amount, 0);
       setConfirmMessage(
         payments.length > 0
           ? `Verranno eliminati anche ${payments.length} ${

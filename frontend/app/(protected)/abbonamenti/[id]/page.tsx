@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/requireAdmin";
-import { getSubscriptionDetail } from "@/lib/queries";
+import { getSubscriptionDetail, listServices } from "@/lib/queries";
+import { PlanMigrationButton } from "@/components/MigrationForm";
+import { MigrationBanner } from "@/components/MigrationBanner";
 import { SubscriptionRowActions } from "@/components/SubscriptionActions";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge, Pill } from "@/components/StatusBadge";
@@ -38,6 +40,11 @@ export default async function SubscriptionDetailPage({
   const detail = await getSubscriptionDetail(id);
   if (!detail) notFound();
 
+  // Destinazioni possibili: i servizi attivi diversi da quello in corso.
+  // Un servizio disattivato non è una meta valida, e migrare su sé stessi
+  // non ha senso: la rotta lo rifiuta comunque, ma è meglio non offrirlo.
+  const services = await listServices();
+
   const { subscription: sub, payments: allPayments } = detail;
 
   const SORT_ACCESSORS: Record<string, (payment: (typeof allPayments)[number]) => SortValue> = {
@@ -55,6 +62,15 @@ export default async function SubscriptionDetailPage({
   const payments = sortRows(allPayments, SORT_ACCESSORS[currentSort.key], currentSort.dir);
   const sortHref = sortHrefBuilder(`/abbonamenti/${id}`, {}, currentSort);
   const personName = sub.person ? `${sub.person.firstName} ${sub.person.lastName}` : "Persona rimossa";
+
+  const migrationTargets = services
+    .filter((service) => service.active && String(service._id) !== String(sub.service?._id))
+    .map((service) => ({
+      _id: String(service._id),
+      name: service.name,
+      monthlyRate: service.monthlyRate,
+    }));
+  const hasPendingMigration = sub.migration?.status === "pianificata";
 
   return (
     <div className="space-y-6">
@@ -88,9 +104,24 @@ export default async function SubscriptionDetailPage({
               }}
               redirectOnDeleteTo="/abbonamenti"
             />
+            {/* Una migrazione già pianificata si gestisce dal banner, non se
+                ne pianifica una seconda: l'indice unico parziale la rifiuta. */}
+            {hasPendingMigration || sub.onboardingStatus === "cessato" ? null : (
+              <PlanMigrationButton
+                subscriptionId={String(sub._id)}
+                services={migrationTargets}
+                periodicity={sub.periodicity}
+                donationSupplement={sub.donationSupplement}
+                oldMonthlyRate={sub.service?.monthlyRate ?? 0}
+                oldNextDueDate={sub.computed.nextDueDate?.toISOString() ?? null}
+                oldPaidForCurrentCycle={sub.computed.paidForCurrentCycle}
+              />
+            )}
           </div>
         }
       />
+
+      {sub.migration ? <MigrationBanner migration={sub.migration} /> : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <DetailTile label="Servizio">
@@ -203,13 +234,22 @@ export default async function SubscriptionDetailPage({
                         {payment.donationAmount ? formatEUR(payment.donationAmount) : "—"}
                       </Td>
                       <Td>
-                        <Pill>{payment.method}</Pill>
+                        {payment.kind === "credito_migrazione" ? (
+                          <Pill>Credito migrazione</Pill>
+                        ) : (
+                          <Pill>{payment.method}</Pill>
+                        )}
                       </Td>
                       <Td className="tnum text-[var(--ink-muted)]">
                         {formatDate(payment.periodStart)} – {formatDate(payment.periodEnd)}
                       </Td>
                       <Td align="right">
-                        <PaymentRowActions
+                        {/* Il credito non si modifica da qui: si disfa
+                            annullando la migrazione che lo ha generato. */}
+                        {payment.kind === "credito_migrazione" ? (
+                          <span className="text-xs text-[var(--ink-muted)]">—</span>
+                        ) : (
+                          <PaymentRowActions
                           subscriptionId={String(sub._id)}
                           payment={{
                             _id: String(payment._id),
@@ -220,7 +260,8 @@ export default async function SubscriptionDetailPage({
                             reference: payment.reference ?? "",
                             notes: payment.notes ?? "",
                           }}
-                        />
+                          />
+                        )}
                       </Td>
                     </tr>
                   ))}

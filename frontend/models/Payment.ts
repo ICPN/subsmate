@@ -3,6 +3,9 @@ import { Schema, model, models, Types, type InferSchemaType, type Model } from "
 export const PAYMENT_METHODS = ["bonifico", "contanti", "paypal", "satispay", "altro"] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
+export const PAYMENT_KINDS = ["incasso", "credito_migrazione"] as const;
+export type PaymentKind = (typeof PAYMENT_KINDS)[number];
+
 /**
  * Riga dello storico pagamenti. Correggibile ma non riassegnabile: importo,
  * donazione, data, metodo, riferimento e note si modificano sul documento
@@ -26,6 +29,11 @@ const PaymentSchema = new Schema(
     donationAmount: { type: Number, min: 0, default: 0 },
     paidAt: { type: Date, required: true, default: () => new Date() },
     method: { type: String, enum: PAYMENT_METHODS, default: "bonifico" },
+    // "credito_migrazione" è denaro già incassato sul vecchio abbonamento e
+    // riconosciuto come sconto sul primo ciclo del nuovo: chiude il ciclo
+    // come un versamento, ma NON va sommato agli incassi, altrimenti si
+    // conterebbe due volte.
+    kind: { type: String, enum: PAYMENT_KINDS, required: true, default: "incasso" },
     // Periodo coperto dal pagamento, derivato da paidAt: ricalcolato anche
     // quando una correzione sposta la data, non solo alla registrazione.
     periodStart: { type: Date, default: null },

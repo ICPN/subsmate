@@ -91,8 +91,11 @@ export default async function PaymentsPage({
 
   // Totali su tutto lo storico, non sulla pagina mostrata: le etichette
   // dicono "registrati" e "totale incassato", e devono valere per l'archivio.
-  const collected = allPayments.reduce((sum, payment) => sum + payment.amount, 0);
-  const donations = allPayments.reduce((sum, payment) => sum + (payment.donationAmount ?? 0), 0);
+  // Come in dashboard: i crediti di migrazione non sono denaro incassato.
+  // Il contatore delle righe resta su tutto, perché nell'elenco si vedono.
+  const incassi = allPayments.filter((payment) => payment.kind !== "credito_migrazione");
+  const collected = incassi.reduce((sum, payment) => sum + payment.amount, 0);
+  const donations = incassi.reduce((sum, payment) => sum + (payment.donationAmount ?? 0), 0);
 
   return (
     <div className="space-y-6">
@@ -199,7 +202,11 @@ export default async function PaymentsPage({
                         {payment.donationAmount ? formatEUR(payment.donationAmount) : "—"}
                       </Td>
                       <Td>
-                        <Pill>{payment.method}</Pill>
+                        {payment.kind === "credito_migrazione" ? (
+                          <Pill>Credito migrazione</Pill>
+                        ) : (
+                          <Pill>{payment.method}</Pill>
+                        )}
                       </Td>
                       <Td className="tnum text-[var(--ink-muted)]">
                         {formatDate(payment.periodStart)} – {formatDate(payment.periodEnd)}

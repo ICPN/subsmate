@@ -5,6 +5,7 @@ import { NewSubscriptionButton, SubscriptionRowActions } from "@/components/Subs
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge, Pill } from "@/components/StatusBadge";
 import { Card, TableWrap, Th, SortableTh, Td, EmptyState, ServiceMark } from "@/components/ui";
+import { MigrationBadge } from "@/components/MigrationBadge";
 import { parseSort, sortRows, sortHrefBuilder, type SortValue } from "@/lib/sorting";
 import { formatEUR, formatDate, toDateInputValue, type PaymentStatus } from "@/lib/billing";
 
@@ -210,6 +211,7 @@ export default async function SubscriptionsPage({
                       ) : (
                         "—"
                       )}
+                      <MigrationBadge alert={sub.migration?.alert ?? null} />
                     </Td>
                     <Td>
                       <Pill>{PERIODICITY_LABELS[sub.periodicity] ?? sub.periodicity}</Pill>

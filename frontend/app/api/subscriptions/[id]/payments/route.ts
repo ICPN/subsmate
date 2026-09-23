@@ -3,7 +3,14 @@ import { Subscription } from "@/models/Subscription";
 import { Payment } from "@/models/Payment";
 import { paymentCreateSchema } from "@/lib/validation";
 import { ok, fail, handleError, parseBody } from "@/lib/api";
-import { coveredPeriod, totalDue } from "@/lib/billing";
+import {
+  PERIOD_MONTHS,
+  addMonths,
+  coveredPeriod,
+  nextDueDate,
+  paidForCycle,
+  totalDue,
+} from "@/lib/billing";
 import { withAdmin } from "@/lib/requireAdmin";
 
 type Context = { params: Promise<{ id: string }> };
@@ -51,11 +58,53 @@ async function handlePOST(request: Request, { params }: Context) {
       data.amount ??
       totalDue(monthlyRate, subscription.periodicity, subscription.donationSupplement);
     const donationAmount = data.donationAmount ?? subscription.donationSupplement ?? 0;
-    const { periodStart, periodEnd } = coveredPeriod(
-      paidAt,
+    // Un versamento che completa un ciclo già coperto in parte appartiene a
+    // QUEL ciclo, non ne apre uno nuovo: va ancorato alla scadenza corrente.
+    // Senza questo, chi salda il residuo in un mese diverso da quello del
+    // primo versamento sposta la scadenza, il versamento precedente smette di
+    // contare (paidForCycle confronta periodEnd con la scadenza) e l'app
+    // richiede di nuovo soldi già incassati. Con il credito di migrazione,
+    // che nasce alla decorrenza mentre il residuo si versa quando capita, il
+    // caso è la norma e non l'eccezione.
+    const esistenti = await Payment.find(
+      { subscription: id },
+      { amount: 1, periodEnd: 1 }
+    ).lean();
+    const scadenzaCorrente = nextDueDate(
+      subscription.lastPaymentDate,
+      subscription.startDate,
       subscription.periodicity,
       subscription.service?.billingDayOfMonth
     );
+    const giaIncassato = paidForCycle(
+      esistenti.map((existing) => ({
+        amount: existing.amount,
+        periodEnd: existing.periodEnd ?? null,
+      })),
+      scadenzaCorrente
+    );
+    const dovutoCiclo = totalDue(
+      monthlyRate,
+      subscription.periodicity,
+      subscription.donationSupplement
+    );
+    const completaCicloAperto =
+      scadenzaCorrente !== null && giaIncassato > 0 && giaIncassato < dovutoCiclo;
+
+    const { periodStart, periodEnd } =
+      completaCicloAperto && scadenzaCorrente
+        ? {
+            periodStart: addMonths(
+              scadenzaCorrente,
+              -PERIOD_MONTHS[subscription.periodicity]
+            ),
+            periodEnd: scadenzaCorrente,
+          }
+        : coveredPeriod(
+            paidAt,
+            subscription.periodicity,
+            subscription.service?.billingDayOfMonth
+          );
 
     const payment = await Payment.create({
       subscription: id,
@@ -72,8 +121,11 @@ async function handlePOST(request: Request, { params }: Context) {
 
     // Avanza lastPaymentDate solo se il pagamento è più recente di quello registrato:
     // permette di inserire pagamenti arretrati senza falsare la prossima scadenza.
+    // Chiudere un ciclo già aperto non sposta la scadenza: quel periodo era
+    // già stato conteggiato, e farla avanzare regalerebbe un ciclo intero.
     const shouldAdvance =
-      !subscription.lastPaymentDate || paidAt > new Date(subscription.lastPaymentDate);
+      !completaCicloAperto &&
+      (!subscription.lastPaymentDate || paidAt > new Date(subscription.lastPaymentDate));
 
     const updated = await Subscription.findByIdAndUpdate(
       id,

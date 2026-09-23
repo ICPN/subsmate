@@ -42,6 +42,18 @@ async function handlePATCH(request: Request, { params }: Context) {
     if (!payment) return fail("Pagamento non trovato", 404);
     if (!subscriptionBefore) return fail("Abbonamento non trovato", 404);
 
+    // Il credito di migrazione non è un incasso corretto a mano: è la
+    // contropartita di un ciclo già pagato sul vecchio abbonamento, ed è
+    // ancorato al ciclo attraverso periodEnd. Modificarlo lo ricalcolerebbe
+    // dalla data, staccandolo dal ciclo; cancellarlo farebbe ricomparire un
+    // dovuto che nessuno deve. Si disfa annullando la migrazione, non qui.
+    if (payment.kind === "credito_migrazione") {
+      return fail(
+        "Un credito di migrazione non si modifica né si cancella: agisci sulla migrazione.",
+        409
+      );
+    }
+
     const previousPaidAt = new Date(payment.paidAt);
     const nextPaidAt = data.paidAt ?? previousPaidAt;
     const dateChanged = nextPaidAt.getTime() !== previousPaidAt.getTime();
@@ -134,6 +146,18 @@ async function handleDELETE(_request: Request, { params }: Context) {
     ]);
     if (!payment) return fail("Pagamento non trovato", 404);
     if (!subscriptionBefore) return fail("Abbonamento non trovato", 404);
+
+    // Il credito di migrazione non è un incasso corretto a mano: è la
+    // contropartita di un ciclo già pagato sul vecchio abbonamento, ed è
+    // ancorato al ciclo attraverso periodEnd. Modificarlo lo ricalcolerebbe
+    // dalla data, staccandolo dal ciclo; cancellarlo farebbe ricomparire un
+    // dovuto che nessuno deve. Si disfa annullando la migrazione, non qui.
+    if (payment.kind === "credito_migrazione") {
+      return fail(
+        "Un credito di migrazione non si modifica né si cancella: agisci sulla migrazione.",
+        409
+      );
+    }
 
     await Payment.findByIdAndDelete(paymentId);
 

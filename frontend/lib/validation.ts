@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { PERIODICITIES, ONBOARDING_STATUSES } from "@/models/Subscription";
 import { PAYMENT_METHODS } from "@/models/Payment";
+import { MIGRATION_CLOSE_OLD } from "@/lib/migration";
 
 /** Schemi di input delle API. Tutto ciò che entra dal client passa di qui. */
 
@@ -68,8 +69,21 @@ export const paymentUpdateSchema = z.object({
   notes: z.string().optional(),
 });
 
+export const migrationCreateSchema = z.object({
+  toService: objectId,
+  effectiveDate: z.coerce.date(),
+  closeOld: z.enum(MIGRATION_CLOSE_OLD).optional(),
+  // Omessa significa «come adesso»: la rotta non la copia, la lascia null.
+  toPeriodicity: z.enum(PERIODICITIES).optional(),
+  notes: z.string().optional(),
+});
+
+/** Su una migrazione pianificata si cambia tutto tranne l'abbonamento di partenza. */
+export const migrationUpdateSchema = migrationCreateSchema.partial();
+
 export type ServiceInput = z.infer<typeof serviceCreateSchema>;
 export type PersonInput = z.infer<typeof personCreateSchema>;
 export type SubscriptionInput = z.infer<typeof subscriptionCreateSchema>;
 export type PaymentInput = z.infer<typeof paymentCreateSchema>;
 export type PaymentUpdateInput = z.infer<typeof paymentUpdateSchema>;
+export type MigrationInput = z.infer<typeof migrationCreateSchema>;
