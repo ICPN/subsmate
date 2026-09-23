@@ -101,7 +101,19 @@ sufficiente da solo.
 
 ## Ambiente: il database è MongoDB Atlas
 
-Il database di riferimento è il cluster Atlas `cluster-icpn-subs`, database `subsmate`.
+Il cluster è `cluster-icpn-subs` e ospita **due database sullo stesso cluster**:
+
+| Database | Chi lo usa | Dove è configurato |
+| --- | --- | --- |
+| `subsmate` | il sito pubblico su Vercel | variabili d'ambiente del progetto Vercel |
+| `subsmate_dev` | lo sviluppo in locale | `frontend/.env.local` e `.env` di root |
+
+Sono separati perché provare l'app in locale registrava pagamenti veri nei dati che vede
+il sito pubblico. `subsmate_dev` nasce come copia di `subsmate`, indici compresi: stesse
+persone, stessi servizi, stesso admin con lo stesso hash, quindi si entra con le medesime
+credenziali. **Non puntare lo sviluppo su `subsmate`** e non allineare i due database
+senza chiedere: la produzione è l'unica copia dei dati reali del team.
+
 La configurazione dell'app sta in **`frontend/.env.local`**, da creare copiando
 `.env.example`: Next.js carica i file d'ambiente solo dalla propria directory di progetto,
 quindi una `.env` nella root **non viene letta** e lascia `MONGODB_URI` indefinita. La
@@ -112,6 +124,20 @@ quindi una `.env` nella root **non viene letta** e lascia `MONGODB_URI` indefini
 (servizio Windows `MongoDB` su `127.0.0.1:27017`) resta commentata come ripiego offline.
 Il nome del database sta in `MONGODB_DB`, non nell'URI: non aggiungerlo al path della
 stringa di connessione, verrebbe ignorato (`lib/mongodb.ts` lo passa come `dbName`).
+
+`frontend/.env.local` è coperto da `.gitignore`, quindi non sopravvive a un clone o a un
+`git clean`: senza di lui l'app parte e fallisce con «AUTH_SECRET non definita». Si
+ricrea copiando `.env.example`, riportando l'URI dalla `.env` di root e generando il
+segreto con
+`node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`.
+Un `AUTH_SECRET` nuovo invalida le sessioni già firmate: si rifà il login, le credenziali
+non cambiano.
+
+Cambiare `.env.local` **non ha effetto su un dev server già avviato**, va riavviato. Se la
+porta 3000 è occupata Next non si ferma: riparte sulla 3001 e si finisce a interrogare il
+server vecchio, con la configurazione vecchia — è già successo, e una scrittura di prova è
+finita in produzione. Su Windows `pkill` non chiude il processo: serve
+`Stop-Process -Id <pid> -Force`, con il pid da `netstat -ano | grep ":3000.*LISTENING"`.
 
 La rete ICPN bloccava la porta 27017 in uscita e per questo si è sviluppato a lungo in
 locale. **Il blocco non c'è più**: DNS SRV, TCP 27017 sui tre nodi, TLS 1.3 e
@@ -124,10 +150,28 @@ Le credenziali Atlas stanno in `atlas-credentials.env`, coperto dalla regola `*.
 `.gitignore` (`.env` da solo non lo intercetterebbe).
 
 Su questa macchina **non sono installati né Python né i MongoDB Database Tools**
-(`mongorestore`, `mongoimport`): gli script in `execution/` non sono eseguibili così com'è,
-e un restore da dump BSON va fatto con il driver Node. I dati attuali di Atlas provengono
-da `dump/subsmate/` importato in questo modo; `dump/` non va committato, contiene l'hash
-della password admin.
+(`mongorestore`, `mongoimport`): gli script in `execution/` non sono eseguibili così com'è.
+Copie e restore si fanno con il driver Node — è così che `subsmate` è stato popolato da un
+dump BSON ed è nato `subsmate_dev`. Un eventuale `dump/` non va committato: contiene
+l'hash della password admin.
+
+## Deploy su Vercel
+
+Il sito sta su `https://subsmate.vercel.app`. Il progetto Vercel ha **Root Directory =
+`frontend`**, perché l'app Next non è nella root del repo.
+
+Tre variabili d'ambiente, le uniche che il codice legge oltre a `NODE_ENV`:
+`AUTH_SECRET`, `MONGODB_URI` e `MONGODB_DB` (in produzione vale `subsmate`). Sono lette
+al deploy: dopo averle cambiate serve un nuovo deploy, non basta salvarle. L'`AUTH_SECRET`
+di Vercel è indipendente da quella locale e **non deve coincidere**.
+
+La allowlist di Atlas contiene `0.0.0.0/0` con commento "Vercel": le funzioni serverless
+escono da IP dinamici e senza quella regola la connessione fallisce. La protezione è la
+password del database, non l'IP.
+
+Non esiste registrazione: gli account si creano solo con `execution/seed_admin.py`
+puntando allo stesso database. Lo script scrive `AUTH_SECRET` in `frontend/.env.local`,
+cioè in locale: non ha alcun effetto su Vercel.
 
 ## UI
 
