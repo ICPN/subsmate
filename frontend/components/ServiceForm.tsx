@@ -8,6 +8,7 @@ export interface ServiceFormValues {
   _id?: string;
   name: string;
   monthlyRate: number;
+  donationSupplement: number;
   billingDayOfMonth: number;
   active: boolean;
   notes: string;
@@ -37,6 +38,7 @@ export function ServiceForm({
     const payload = {
       name: String(form.get("name")),
       monthlyRate: Number(form.get("monthlyRate")),
+      donationSupplement: Number(form.get("donationSupplement") ?? 0),
       billingDayOfMonth: Number(form.get("billingDayOfMonth")),
       active: form.get("active") === "on",
       notes: String(form.get("notes") ?? ""),
@@ -69,6 +71,15 @@ export function ServiceForm({
             name="monthlyRate"
             defaultValue={initialValues?.monthlyRate ?? 0}
             required
+          />
+        </Field>
+        <Field label="Supplemento donazione (€)" hint="Per ciclo, per chi dona">
+          <TextInput
+            type="number"
+            step="0.01"
+            min={0}
+            name="donationSupplement"
+            defaultValue={initialValues?.donationSupplement ?? 0}
           />
         </Field>
         <Field label="Giorno addebito" hint="1–31">

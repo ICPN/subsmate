@@ -85,6 +85,12 @@ async function handlePOST(_request: Request, { params }: Context) {
     // resta quella in corso.
     const newPeriodicity = migration.toPeriodicity ?? oldSubscription.periodicity;
 
+    // Il supplemento appartiene al servizio: chi donava continua a donare, ma
+    // l'importo è quello della destinazione. Ereditare il vecchio faceva
+    // risultare il trimestre nuovo più caro di quanto è.
+    const newDonation =
+      oldSubscription.donationSupplement > 0 ? (newService.donationSupplement ?? 0) : 0;
+
     const balance = migrationBalance({
       effectiveDate: new Date(migration.effectiveDate),
       closeOld: migration.closeOld,
@@ -92,9 +98,10 @@ async function handlePOST(_request: Request, { params }: Context) {
       oldMonthlyRate: oldService?.monthlyRate ?? 0,
       oldPeriodicity: oldSubscription.periodicity,
       oldPaidForCurrentCycle: oldComputed.paidForCurrentCycle,
+      oldDonationSupplement: oldSubscription.donationSupplement,
       newMonthlyRate: newService.monthlyRate,
       newPeriodicity: newPeriodicity,
-      donationSupplement: oldSubscription.donationSupplement,
+      newDonationSupplement: newDonation,
     });
 
     // Rivendicazione atomica: da qui in poi si scrive, e due richieste
@@ -124,7 +131,7 @@ async function handlePOST(_request: Request, { params }: Context) {
             existing._id,
             {
               periodicity: newPeriodicity,
-              donationSupplement: oldSubscription!.donationSupplement,
+              donationSupplement: newDonation,
               onboardingStatus: "attivo",
               startDate: migration!.effectiveDate,
               // Il ciclo riparte dalla decorrenza: i pagamenti storici di
@@ -138,7 +145,7 @@ async function handlePOST(_request: Request, { params }: Context) {
             person: migration!.person,
             service: migration!.toService,
             periodicity: newPeriodicity,
-            donationSupplement: oldSubscription!.donationSupplement,
+            donationSupplement: newDonation,
             onboardingStatus: "attivo",
             startDate: migration!.effectiveDate,
             notes: `Migrazione da ${oldService?.name ?? "servizio precedente"}`,

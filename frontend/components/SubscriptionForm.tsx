@@ -39,6 +39,8 @@ interface PersonOption {
 interface ServiceOption {
   _id: string;
   name: string;
+  /** Supplemento standard del servizio, proposto scegliendolo. */
+  donationSupplement?: number;
 }
 
 /**
@@ -62,6 +64,10 @@ export function SubscriptionForm({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isEdit = Boolean(initialValues?._id);
+  // Il supplemento appartiene al servizio: sceglierne uno propone il suo
+  // importo, senza costringere a ricordarlo. Resta modificabile perché chi
+  // non dona sta a zero.
+  const [donation, setDonation] = useState(String(initialValues?.donationSupplement ?? 0));
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -113,7 +119,15 @@ export function SubscriptionForm({
               </Select>
             </Field>
             <Field label="Servizio">
-              <Select name="service" defaultValue="" required>
+              <Select
+                name="service"
+                defaultValue=""
+                required
+                onChange={(event) => {
+                  const scelto = services.find((s) => s._id === event.target.value);
+                  if (scelto) setDonation(String(scelto.donationSupplement ?? 0));
+                }}
+              >
                 <option value="" disabled>
                   Seleziona un servizio
                 </option>
@@ -166,7 +180,8 @@ export function SubscriptionForm({
             step="0.01"
             min={0}
             name="donationSupplement"
-            defaultValue={initialValues?.donationSupplement ?? 0}
+            value={donation}
+            onChange={(event) => setDonation(event.target.value)}
           />
         </Field>
 

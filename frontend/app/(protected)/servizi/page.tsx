@@ -153,6 +153,7 @@ export default async function ServicesPage({
                             _id: String(service._id),
                             name: service.name,
                             monthlyRate: service.monthlyRate,
+                            donationSupplement: service.donationSupplement ?? 0,
                             billingDayOfMonth: service.billingDayOfMonth ?? 18,
                             active: service.active ?? true,
                             notes: service.notes ?? "",

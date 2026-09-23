@@ -28,6 +28,7 @@ export interface MigrationView {
     name: string;
     slug: string;
     monthlyRate: number;
+    donationSupplement: number;
     logo: string | null;
   } | null;
   effectiveDate: Date;
@@ -107,7 +108,7 @@ export async function listSubscriptions(
     fromSubscription: { $in: subscriptions.map((sub) => sub._id) },
     status: { $ne: "annullata" },
   })
-    .populate("toService", "name slug monthlyRate")
+    .populate("toService", "name slug monthlyRate donationSupplement")
     .sort({ createdAt: -1 })
     .lean();
 
@@ -176,9 +177,13 @@ export async function listSubscriptions(
                   oldMonthlyRate: service?.monthlyRate ?? 0,
                   oldPeriodicity: sub.periodicity,
                   oldPaidForCurrentCycle: computed.paidForCurrentCycle,
+                  oldDonationSupplement: sub.donationSupplement,
                   newMonthlyRate: toService.monthlyRate,
                   newPeriodicity: raw.toPeriodicity ?? sub.periodicity,
-                  donationSupplement: sub.donationSupplement,
+                  // Chi non dona resta a zero; chi dona passa all'importo del
+                  // servizio di destinazione, che è diverso da quello attuale.
+                  newDonationSupplement:
+                    sub.donationSupplement > 0 ? (toService.donationSupplement ?? 0) : 0,
                 })
               : null,
         }

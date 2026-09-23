@@ -10,6 +10,12 @@ const ServiceSchema = new Schema(
     slug: { type: String, required: true, unique: true, lowercase: true, trim: true },
     // Tariffa mensile per persona, in euro. Base di calcolo della quota.
     monthlyRate: { type: Number, required: true, min: 0 },
+    // Supplemento donazione standard del servizio, per ciclo. Sta qui e non
+    // solo sull'abbonamento perché è una proprietà del servizio: Claude e
+    // ChatGPT hanno importi diversi, e senza questo valore una migrazione non
+    // saprebbe quale applicare al nuovo abbonamento. Sul singolo abbonamento
+    // resta modificabile: chi non dona sta a zero.
+    donationSupplement: { type: Number, min: 0, default: 0 },
     // Giorno del mese in cui la piattaforma addebita l'abbonamento (1-31).
     // 18 è la convenzione del team ICPN, non un valore arbitrario.
     billingDayOfMonth: { type: Number, min: 1, max: 31, default: 18 },

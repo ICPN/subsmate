@@ -78,9 +78,16 @@ export interface MigrationBalanceInput {
   oldPeriodicity: Periodicity;
   /** Quanto è stato davvero incassato per il ciclo in corso del vecchio. */
   oldPaidForCurrentCycle: number;
+  /** Supplemento donazione del VECCHIO abbonamento: entra nel credito. */
+  oldDonationSupplement?: number;
   newMonthlyRate: number;
   newPeriodicity: Periodicity;
-  donationSupplement?: number;
+  /**
+   * Supplemento del NUOVO abbonamento. È quello del servizio di destinazione,
+   * non quello ereditato: il supplemento appartiene al servizio, e Claude e
+   * ChatGPT hanno importi diversi.
+   */
+  newDonationSupplement?: number;
 }
 
 export interface MigrationBalance {
@@ -123,7 +130,8 @@ export interface MigrationBalance {
  * sommano al saldo per costruzione.
  */
 export function migrationBalance(input: MigrationBalanceInput): MigrationBalance {
-  const donation = input.donationSupplement ?? 0;
+  const oldDonation = input.oldDonationSupplement ?? 0;
+  const donation = input.newDonationSupplement ?? 0;
   const months = creditMonths(input.effectiveDate, input.oldNextDueDate, input.closeOld);
   // Un mese di credito vale quanto la persona versa davvero ogni mese: la
   // quota del servizio più la parte mensile del supplemento donazione. Anche
@@ -131,7 +139,7 @@ export function migrationBalance(input: MigrationBalanceInput): MigrationBalance
   // recuperabile come il resto — chi paga 30 € a trimestre ha un mese da 10 €,
   // non da 8,50.
   const creditMonthlyRate = round2(
-    input.oldMonthlyRate + donation / PERIOD_MONTHS[input.oldPeriodicity]
+    input.oldMonthlyRate + oldDonation / PERIOD_MONTHS[input.oldPeriodicity]
   );
   const creditAmount = round2(
     Math.min(months * creditMonthlyRate, Math.max(0, input.oldPaidForCurrentCycle))

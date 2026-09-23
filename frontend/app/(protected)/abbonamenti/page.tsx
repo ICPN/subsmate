@@ -66,7 +66,11 @@ export default async function SubscriptionsPage({
     lastName: person.lastName,
     email: person.email,
   }));
-  const serviceOptions = services.map((item) => ({ _id: String(item._id), name: item.name }));
+  const serviceOptions = services.map((item) => ({
+    _id: String(item._id),
+    name: item.name,
+    donationSupplement: item.donationSupplement ?? 0,
+  }));
 
   // Lo stato è calcolato, non salvato: filtro e ordinamento si applicano dopo il calcolo.
   const filtered =

@@ -70,6 +70,10 @@ ricostruire poi il conto. Spec:
 - **Un mese di credito vale quanto la persona versa al mese, donazione compresa**
   (`oldMonthlyRate + donationSupplement / mesi del ciclo`): chi paga 30 € a trimestre ha un
   mese da 10 €, non da 8,50. Anche la donazione è denaro incassato e non consumato.
+- **Il supplemento donazione appartiene al servizio** (`Service.donationSupplement`: Claude
+  4,50, ChatGPT 2,40), non alla persona. Migrando, il nuovo abbonamento prende quello della
+  destinazione e non eredita il vecchio; chi stava a zero resta a zero. Ereditarlo faceva
+  risultare il trimestre nuovo più caro di quanto è.
 - **`closeOld` distingue chiusura anticipata e accavallamento voluto**, non la data: con
   `a_scadenza` il vecchio resta attivo fino alla scadenza e il credito è zero per scelta.
 - **Il credito è un `Payment` con `kind: "credito_migrazione"`**, non un campo: così

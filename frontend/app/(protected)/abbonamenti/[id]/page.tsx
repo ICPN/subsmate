@@ -69,6 +69,7 @@ export default async function SubscriptionDetailPage({
       _id: String(service._id),
       name: service.name,
       monthlyRate: service.monthlyRate,
+      donationSupplement: service.donationSupplement ?? 0,
     }));
   const hasPendingMigration = sub.migration?.status === "pianificata";
 

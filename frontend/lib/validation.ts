@@ -16,6 +16,7 @@ export const serviceCreateSchema = z.object({
     .regex(/^[a-z0-9-]+$/, "Solo minuscole, numeri e trattini")
     .optional(),
   monthlyRate: z.coerce.number().min(0),
+  donationSupplement: z.coerce.number().min(0).optional(),
   billingDayOfMonth: z.coerce.number().int().min(1).max(31).optional(),
   active: z.boolean().optional(),
   notes: z.string().optional(),

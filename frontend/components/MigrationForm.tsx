@@ -27,6 +27,8 @@ export interface MigrationServiceOption {
   _id: string;
   name: string;
   monthlyRate: number;
+  /** Supplemento donazione del servizio, applicato a chi già dona. */
+  donationSupplement: number;
 }
 
 interface MigrationFormProps {
@@ -74,10 +76,12 @@ export function MigrationForm({
         oldNextDueDate: oldNextDueDate ? new Date(oldNextDueDate) : null,
         oldMonthlyRate,
         oldPeriodicity: periodicity,
+        oldDonationSupplement: donationSupplement,
         oldPaidForCurrentCycle,
         newMonthlyRate: target.monthlyRate,
         newPeriodicity: toPeriodicity,
-        donationSupplement,
+        // Il supplemento segue il servizio: chi non dona resta a zero.
+        newDonationSupplement: donationSupplement > 0 ? target.donationSupplement : 0,
       })
     : null;
 
