@@ -252,10 +252,19 @@ export async function getDashboardData() {
       in_regola:
         subscriptions.length - late.length - dueSoon.length - toActivate.length,
     },
-    // Ordinati per urgenza: scadenza più arretrata in cima.
-    attention: [...late, ...dueSoon].sort(
-      (a, b) => (a.computed.daysToDue ?? 0) - (b.computed.daysToDue ?? 0)
-    ),
+    // Ordinati per urgenza: scadenza più arretrata in cima. Entrano anche gli
+    // abbonamenti con una migrazione da seguire, che possono essere in regola
+    // sui pagamenti e avere comunque qualcosa da fare entro pochi giorni.
+    attention: [
+      ...late,
+      ...dueSoon,
+      ...subscriptions.filter(
+        (sub) =>
+          sub.migration?.alert &&
+          !late.includes(sub) &&
+          !dueSoon.includes(sub)
+      ),
+    ].sort((a, b) => (a.computed.daysToDue ?? 0) - (b.computed.daysToDue ?? 0)),
   };
 }
 

@@ -12,6 +12,7 @@ import {
   LinkButton,
   ServiceMark,
 } from "@/components/ui";
+import { MigrationBadge } from "@/components/MigrationBadge";
 import { parseSort, sortRows, sortHrefBuilder, type SortValue } from "@/lib/sorting";
 import type { SubscriptionView } from "@/lib/queries";
 import { formatEUR, formatDate, statusDetail } from "@/lib/billing";
@@ -146,6 +147,7 @@ export default async function DashboardPage({
                       ) : (
                         "—"
                       )}
+                      <MigrationBadge alert={sub.migration?.alert ?? null} />
                     </Td>
                     <Td>
                       <span className="tnum">{formatDate(sub.computed.nextDueDate)}</span>
