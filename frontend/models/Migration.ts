@@ -13,12 +13,11 @@ import { MIGRATION_CLOSE_OLD, MIGRATION_STATUSES } from "@/lib/migration";
 const MigrationSchema = new Schema(
   {
     person: { type: Types.ObjectId, ref: "Person", required: true, index: true },
-    fromSubscription: {
-      type: Types.ObjectId,
-      ref: "Subscription",
-      required: true,
-      index: true,
-    },
+    // Senza `index: true`: l'indice su questo campo è dichiarato più sotto con
+    // unique e partialFilterExpression. Dichiararlo in entrambi i modi fa sì
+    // che MongoDB crei solo il primo e scarti silenziosamente unique e il
+    // filtro parziale, lasciando il vincolo inesistente.
+    fromSubscription: { type: Types.ObjectId, ref: "Subscription", required: true },
     toService: { type: Types.ObjectId, ref: "Service", required: true },
     // Valorizzato all'esecuzione, quando l'abbonamento nuovo esiste davvero.
     toSubscription: { type: Types.ObjectId, ref: "Subscription", default: null },
