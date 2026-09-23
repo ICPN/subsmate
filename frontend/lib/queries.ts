@@ -120,7 +120,13 @@ export async function getDashboardData() {
   const dueSoon = subscriptions.filter((s) => s.computed.status === "in_scadenza");
   const toActivate = subscriptions.filter((s) => s.computed.status === "da_attivare");
 
+  // Il credito di migrazione è denaro già contato sul vecchio abbonamento:
+  // chiude il ciclo del nuovo ma non è un incasso, e sommarlo qui lo
+  // conterebbe due volte. `$ne` e non `$eq: "incasso"` perché i pagamenti
+  // scritti prima di questo campo non hanno `kind` in documento: il default
+  // di Mongoose vale alla scrittura, non retroattivamente.
   const [donations] = await Payment.aggregate([
+    { $match: { kind: { $ne: "credito_migrazione" } } },
     { $group: { _id: null, total: { $sum: "$donationAmount" }, collected: { $sum: "$amount" } } },
   ]);
 
