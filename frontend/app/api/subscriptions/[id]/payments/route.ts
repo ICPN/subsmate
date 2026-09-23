@@ -38,7 +38,10 @@ async function handlePOST(request: Request, { params }: Context) {
     if (error) return error;
 
     const subscription = await Subscription.findById(id)
-      .populate<{ service: { monthlyRate: number } }>("service", "monthlyRate")
+      .populate<{ service: { monthlyRate: number; billingDayOfMonth: number | null } }>(
+        "service",
+        "monthlyRate billingDayOfMonth"
+      )
       .lean();
     if (!subscription) return fail("Abbonamento non trovato", 404);
 
@@ -48,7 +51,11 @@ async function handlePOST(request: Request, { params }: Context) {
       data.amount ??
       totalDue(monthlyRate, subscription.periodicity, subscription.donationSupplement);
     const donationAmount = data.donationAmount ?? subscription.donationSupplement ?? 0;
-    const { periodStart, periodEnd } = coveredPeriod(paidAt, subscription.periodicity);
+    const { periodStart, periodEnd } = coveredPeriod(
+      paidAt,
+      subscription.periodicity,
+      subscription.service?.billingDayOfMonth
+    );
 
     const payment = await Payment.create({
       subscription: id,

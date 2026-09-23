@@ -1,15 +1,22 @@
 import { requireAdmin } from "@/lib/requireAdmin";
 import { listServices, listSubscriptions } from "@/lib/queries";
 import { PageHeader } from "@/components/PageHeader";
-import { Card, TableWrap, Th, Td, EmptyState, ServiceMark } from "@/components/ui";
+import { Card, TableWrap, Th, SortableTh, Td, EmptyState, ServiceMark } from "@/components/ui";
+import { parseSort, sortRows, sortHrefBuilder, type SortValue } from "@/lib/sorting";
 import { Pill } from "@/components/StatusBadge";
 import { formatEUR } from "@/lib/billing";
+import { NewServiceButton, ServiceRowActions } from "@/components/ServiceActions";
 
 export const dynamic = "force-dynamic";
 
-export default async function ServicesPage() {
+export default async function ServicesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ sort?: string; dir?: string }>;
+}) {
   await requireAdmin("/servizi");
-  const [services, subscriptions] = await Promise.all([listServices(), listSubscriptions()]);
+  const { sort, dir } = await searchParams;
+  const [allServices, subscriptions] = await Promise.all([listServices(), listSubscriptions()]);
 
   // Quanti abbonati e quanto incassa ogni servizio per ciclo.
   const usage = new Map<string, { subscribers: number; due: number }>();
@@ -23,15 +30,35 @@ export default async function ServicesPage() {
     });
   }
 
+  const usageOf = (id: string) => usage.get(id) ?? { subscribers: 0, due: 0 };
+
+  const SORT_ACCESSORS: Record<string, (service: (typeof allServices)[number]) => SortValue> = {
+    servizio: (service) => service.name,
+    tariffa: (service) => service.monthlyRate,
+    trimestrale: (service) => service.monthlyRate * 3,
+    addebito: (service) => service.billingDayOfMonth ?? null,
+    abbonati: (service) => usageOf(String(service._id)).subscribers,
+    quote: (service) => usageOf(String(service._id)).due,
+    stato: (service) => (service.active ? "Attivo" : "Disattivato"),
+  };
+
+  const currentSort = parseSort({ sort, dir }, Object.keys(SORT_ACCESSORS), {
+    key: "servizio",
+    dir: "asc",
+  });
+  const services = sortRows(allServices, SORT_ACCESSORS[currentSort.key], currentSort.dir);
+  const sortHref = sortHrefBuilder("/servizi", {}, currentSort);
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         title="Servizi"
         description="Tariffe dei servizi LLM. Aggiungere un servizio non richiede modifiche al codice: è un record in più."
+        action={<NewServiceButton />}
       />
 
       <Card title="Elenco">
-        {services.length === 0 ? (
+        {allServices.length === 0 ? (
           <EmptyState title="Nessun servizio configurato">
             Esegui <code className="font-mono text-xs">python execution/seed_services.py</code>{" "}
             per creare Claude e ChatGPT, oppure usa{" "}
@@ -42,25 +69,65 @@ export default async function ServicesPage() {
             <table className="w-full border-collapse">
               <thead className="border-b border-[var(--border)]">
                 <tr>
-                  <Th>Servizio</Th>
-                  <Th align="right">Tariffa mensile</Th>
-                  <Th align="right">Trimestrale</Th>
-                  <Th align="right">Giorno addebito</Th>
-                  <Th align="right">Abbonati attivi</Th>
-                  <Th align="right">Quote per ciclo</Th>
-                  <Th>Stato</Th>
+                  <SortableTh sortKey="servizio" current={currentSort} hrefFor={sortHref}>
+                    Servizio
+                  </SortableTh>
+                  <SortableTh
+                    sortKey="tariffa"
+                    current={currentSort}
+                    hrefFor={sortHref}
+                    align="right"
+                  >
+                    Tariffa mensile
+                  </SortableTh>
+                  <SortableTh
+                    sortKey="trimestrale"
+                    current={currentSort}
+                    hrefFor={sortHref}
+                    align="right"
+                  >
+                    Trimestrale
+                  </SortableTh>
+                  <SortableTh
+                    sortKey="addebito"
+                    current={currentSort}
+                    hrefFor={sortHref}
+                    align="right"
+                  >
+                    Giorno addebito
+                  </SortableTh>
+                  <SortableTh
+                    sortKey="abbonati"
+                    current={currentSort}
+                    hrefFor={sortHref}
+                    align="right"
+                  >
+                    Abbonati attivi
+                  </SortableTh>
+                  <SortableTh
+                    sortKey="quote"
+                    current={currentSort}
+                    hrefFor={sortHref}
+                    align="right"
+                  >
+                    Quote per ciclo
+                  </SortableTh>
+                  <SortableTh sortKey="stato" current={currentSort} hrefFor={sortHref}>
+                    Stato
+                  </SortableTh>
+                  <Th align="right">Azioni</Th>
                 </tr>
               </thead>
               <tbody>
                 {services.map((service) => {
-                  const stats = usage.get(String(service._id)) ?? { subscribers: 0, due: 0 };
+                  const stats = usageOf(String(service._id));
                   return (
                     <tr
                       key={String(service._id)}
                       className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--surface)]"
                     >
                       <Td>
-                        <ServiceMark name={service.name} />
+                        <ServiceMark name={service.name} logo={service.logo} />
                       </Td>
                       <Td align="right" className="tnum font-medium">
                         {formatEUR(service.monthlyRate)}
@@ -79,6 +146,18 @@ export default async function ServicesPage() {
                       </Td>
                       <Td>
                         <Pill>{service.active ? "Attivo" : "Disattivato"}</Pill>
+                      </Td>
+                      <Td align="right">
+                        <ServiceRowActions
+                          service={{
+                            _id: String(service._id),
+                            name: service.name,
+                            monthlyRate: service.monthlyRate,
+                            billingDayOfMonth: service.billingDayOfMonth ?? 18,
+                            active: service.active ?? true,
+                            notes: service.notes ?? "",
+                          }}
+                        />
                       </Td>
                     </tr>
                   );

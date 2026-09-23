@@ -2,11 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { getSubscriptionDetail } from "@/lib/queries";
+import { SubscriptionRowActions } from "@/components/SubscriptionActions";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge, Pill } from "@/components/StatusBadge";
-import { Card, TableWrap, Th, Td, EmptyState, ServiceMark } from "@/components/ui";
+import { Card, TableWrap, Th, SortableTh, Td, EmptyState, ServiceMark } from "@/components/ui";
+import { parseSort, sortRows, sortHrefBuilder, type SortValue } from "@/lib/sorting";
 import { RegisterPaymentForm } from "@/components/RegisterPaymentForm";
-import { formatEUR, formatDate, statusDetail } from "@/lib/billing";
+import { PaymentRowActions } from "@/components/PaymentRowActions";
+import { formatEUR, formatDate, statusDetail, toDateInputValue } from "@/lib/billing";
 
 export const dynamic = "force-dynamic";
 
@@ -24,19 +27,37 @@ const ONBOARDING_LABELS: Record<string, string> = {
 
 export default async function SubscriptionDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ sort?: string; dir?: string }>;
 }) {
   const { id } = await params;
+  const { sort, dir } = await searchParams;
   await requireAdmin(`/abbonamenti/${id}`);
   const detail = await getSubscriptionDetail(id);
   if (!detail) notFound();
 
-  const { subscription: sub, payments } = detail;
+  const { subscription: sub, payments: allPayments } = detail;
+
+  const SORT_ACCESSORS: Record<string, (payment: (typeof allPayments)[number]) => SortValue> = {
+    data: (payment) => new Date(payment.paidAt),
+    importo: (payment) => payment.amount,
+    donazione: (payment) => payment.donationAmount ?? 0,
+    metodo: (payment) => payment.method ?? null,
+    periodo: (payment) => (payment.periodStart ? new Date(payment.periodStart) : null),
+  };
+
+  const currentSort = parseSort({ sort, dir }, Object.keys(SORT_ACCESSORS), {
+    key: "data",
+    dir: "desc",
+  });
+  const payments = sortRows(allPayments, SORT_ACCESSORS[currentSort.key], currentSort.dir);
+  const sortHref = sortHrefBuilder(`/abbonamenti/${id}`, {}, currentSort);
   const personName = sub.person ? `${sub.person.firstName} ${sub.person.lastName}` : "Persona rimossa";
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div>
         <Link
           href="/abbonamenti"
@@ -49,12 +70,31 @@ export default async function SubscriptionDetailPage({
       <PageHeader
         title={personName}
         description={sub.person?.email}
-        action={<StatusBadge status={sub.computed.status} />}
+        action={
+          <div className="flex items-center gap-3">
+            <StatusBadge status={sub.computed.status} />
+            <SubscriptionRowActions
+              subscription={{
+                _id: String(sub._id),
+                person: sub.person ? String(sub.person._id) : "",
+                personLabel: personName,
+                service: sub.service ? String(sub.service._id) : "",
+                serviceLabel: sub.service?.name ?? "Servizio rimosso",
+                periodicity: sub.periodicity,
+                donationSupplement: sub.donationSupplement,
+                onboardingStatus: sub.onboardingStatus,
+                startDate: toDateInputValue(sub.startDate),
+                notes: sub.notes ?? "",
+              }}
+              redirectOnDeleteTo="/abbonamenti"
+            />
+          </div>
+        }
       />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <DetailTile label="Servizio">
-          {sub.service ? <ServiceMark name={sub.service.name} /> : "—"}
+          {sub.service ? <ServiceMark name={sub.service.name} logo={sub.service.logo} /> : "—"}
         </DetailTile>
         <DetailTile label="Periodicità">
           <Pill>{PERIODICITY_LABELS[sub.periodicity] ?? sub.periodicity}</Pill>
@@ -69,6 +109,15 @@ export default async function SubscriptionDetailPage({
               ? ` + ${formatEUR(sub.computed.donationSupplement)} donazione`
               : ""}
           </span>
+          {sub.computed.outstanding > 0 ? (
+            <span
+              className="tnum mt-1 block text-xs font-medium"
+              style={{ color: "var(--status-warn)" }}
+            >
+              Incassati {formatEUR(sub.computed.paidForCurrentCycle)}: mancano{" "}
+              {formatEUR(sub.computed.outstanding)}
+            </span>
+          ) : null}
         </DetailTile>
         <DetailTile label="Prossima scadenza">
           <span className="tnum">{formatDate(sub.computed.nextDueDate)}</span>
@@ -78,12 +127,13 @@ export default async function SubscriptionDetailPage({
         </DetailTile>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
         <Card title="Registra pagamento">
           <RegisterPaymentForm
             subscriptionId={String(sub._id)}
             defaultAmount={sub.computed.totalDue}
             defaultDonation={sub.computed.donationSupplement}
+            defaultOutstanding={sub.computed.outstanding}
           />
         </Card>
 
@@ -97,19 +147,46 @@ export default async function SubscriptionDetailPage({
         >
           {payments.length === 0 ? (
             <EmptyState title="Nessun pagamento registrato">
-              Registra il primo pagamento: l&apos;abbonamento passerà da
-              &laquo;{ONBOARDING_LABELS[sub.onboardingStatus]}&raquo; ad &laquo;Attivo&raquo;.
+              {sub.onboardingStatus === "da_attivare"
+                ? (
+                  <>
+                    Registra il primo pagamento: l&apos;abbonamento passerà da
+                    &laquo;{ONBOARDING_LABELS[sub.onboardingStatus]}&raquo; ad &laquo;Attivo&raquo;.
+                  </>
+                )
+                : "Nessun pagamento ancora registrato per questo abbonamento."}
             </EmptyState>
           ) : (
             <TableWrap>
               <table className="w-full border-collapse">
                 <thead className="border-b border-[var(--border)]">
                   <tr>
-                    <Th>Data</Th>
-                    <Th align="right">Importo</Th>
-                    <Th align="right">Donazione</Th>
-                    <Th>Metodo</Th>
-                    <Th>Periodo coperto</Th>
+                    <SortableTh sortKey="data" current={currentSort} hrefFor={sortHref}>
+                      Data
+                    </SortableTh>
+                    <SortableTh
+                      sortKey="importo"
+                      current={currentSort}
+                      hrefFor={sortHref}
+                      align="right"
+                    >
+                      Importo
+                    </SortableTh>
+                    <SortableTh
+                      sortKey="donazione"
+                      current={currentSort}
+                      hrefFor={sortHref}
+                      align="right"
+                    >
+                      Donazione
+                    </SortableTh>
+                    <SortableTh sortKey="metodo" current={currentSort} hrefFor={sortHref}>
+                      Metodo
+                    </SortableTh>
+                    <SortableTh sortKey="periodo" current={currentSort} hrefFor={sortHref}>
+                      Periodo coperto
+                    </SortableTh>
+                    <Th align="right">Azioni</Th>
                   </tr>
                 </thead>
                 <tbody>
@@ -131,6 +208,14 @@ export default async function SubscriptionDetailPage({
                       <Td className="tnum text-[var(--ink-muted)]">
                         {formatDate(payment.periodStart)} – {formatDate(payment.periodEnd)}
                       </Td>
+                      <Td align="right">
+                        <PaymentRowActions
+                          subscriptionId={String(sub._id)}
+                          paymentId={String(payment._id)}
+                          amount={payment.amount}
+                          paidAt={new Date(payment.paidAt).toISOString()}
+                        />
+                      </Td>
                     </tr>
                   ))}
                 </tbody>
@@ -142,7 +227,7 @@ export default async function SubscriptionDetailPage({
 
       {sub.notes ? (
         <Card title="Note">
-          <p className="px-5 py-4 text-sm text-[var(--ink-muted)]">{sub.notes}</p>
+          <p className="px-4 py-3 text-sm text-[var(--ink-muted)]">{sub.notes}</p>
         </Card>
       ) : null}
     </div>
@@ -151,7 +236,7 @@ export default async function SubscriptionDetailPage({
 
 function DetailTile({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] px-5 py-4">
+    <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] px-4 py-3">
       <p className="mb-1 text-xs font-medium text-[var(--ink-muted)]">{label}</p>
       <div className="text-sm">{children}</div>
     </div>

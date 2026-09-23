@@ -4,6 +4,7 @@ import { Payment } from "@/models/Payment";
 import { Person } from "@/models/Person";
 import { Service } from "@/models/Service";
 import { computeSubscription, type SubscriptionComputation } from "@/lib/billing";
+import { serviceLogoFor } from "@/lib/serviceLogo";
 import type { Periodicity, OnboardingStatus } from "@/models/Subscription";
 
 /**
@@ -14,7 +15,15 @@ import type { Periodicity, OnboardingStatus } from "@/models/Subscription";
 export interface SubscriptionView {
   _id: string;
   person: { _id: string; firstName: string; lastName: string; email: string } | null;
-  service: { _id: string; name: string; slug: string; monthlyRate: number } | null;
+  service: {
+    _id: string;
+    name: string;
+    slug: string;
+    monthlyRate: number;
+    billingDayOfMonth: number | null;
+    /** Percorso del logo in /public, o null se il servizio non ne ha uno. */
+    logo: string | null;
+  } | null;
   periodicity: Periodicity;
   donationSupplement: number;
   onboardingStatus: OnboardingStatus;
@@ -34,15 +43,31 @@ export async function listSubscriptions(
 
   const subscriptions = await Subscription.find(filter)
     .populate("person", "firstName lastName email")
-    .populate("service", "name slug monthlyRate")
+    .populate("service", "name slug monthlyRate billingDayOfMonth")
     .sort({ createdAt: -1 })
     .lean();
 
+  // I pagamenti servono a sapere quanto è già stato incassato per il ciclo in
+  // corso: un versamento parziale non chiude il ciclo, e va segnalato. Una sola
+  // query per tutti gli abbonamenti invece di una per riga.
+  const paymentsBySubscription = new Map<string, { amount: number; periodEnd: Date | null }[]>();
+  const payments = await Payment.find(
+    { subscription: { $in: subscriptions.map((sub) => sub._id) } },
+    { subscription: 1, amount: 1, periodEnd: 1 }
+  ).lean();
+  for (const payment of payments) {
+    const key = String(payment.subscription);
+    const list = paymentsBySubscription.get(key) ?? [];
+    list.push({ amount: payment.amount, periodEnd: payment.periodEnd ?? null });
+    paymentsBySubscription.set(key, list);
+  }
+
   const now = new Date();
   return subscriptions.map((sub) => {
-    const service = sub.service as unknown as { monthlyRate?: number } | null;
+    const service = sub.service as unknown as SubscriptionView["service"];
     return {
       ...(sub as unknown as SubscriptionView),
+      service: service ? { ...service, logo: serviceLogoFor(service.slug) } : null,
       computed: computeSubscription(
         {
           monthlyRate: service?.monthlyRate ?? 0,
@@ -51,6 +76,8 @@ export async function listSubscriptions(
           onboardingStatus: sub.onboardingStatus,
           startDate: sub.startDate,
           lastPaymentDate: sub.lastPaymentDate,
+          billingDayOfMonth: service?.billingDayOfMonth,
+          payments: paymentsBySubscription.get(String(sub._id)) ?? [],
         },
         now
       ),
@@ -65,7 +92,8 @@ export async function listPeople() {
 
 export async function listServices() {
   await connectToDatabase();
-  return Service.find().sort({ name: 1 }).lean();
+  const services = await Service.find().sort({ name: 1 }).lean();
+  return services.map((service) => ({ ...service, logo: serviceLogoFor(service.slug) }));
 }
 
 export async function listPayments(limit = 50) {

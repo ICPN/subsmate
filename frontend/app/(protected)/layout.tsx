@@ -1,6 +1,7 @@
 import { requireAdmin } from "@/lib/requireAdmin";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { ToastProvider } from "@/components/Toast";
 
 /**
  * Controllo autorevole per tutte le pagine dell'app in un punto solo.
@@ -11,10 +12,12 @@ import { Footer } from "@/components/Footer";
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
   await requireAdmin();
   return (
-    <div className="flex min-h-screen flex-col">
-      <Header />
-      <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-10">{children}</main>
-      <Footer />
-    </div>
+    <ToastProvider>
+      <div className="flex min-h-screen flex-col">
+        <Header />
+        <main className="mx-auto w-full min-w-0 max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8">{children}</main>
+        <Footer />
+      </div>
+    </ToastProvider>
   );
 }

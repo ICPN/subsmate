@@ -13,8 +13,8 @@ from db import get_db
 
 # Tariffe mensili per persona, in euro. Da allineare ai costi reali della piattaforma.
 SERVICES = [
-    {"name": "Claude", "slug": "claude", "monthlyRate": 25.0, "billingDayOfMonth": 1},
-    {"name": "ChatGPT", "slug": "chatgpt", "monthlyRate": 25.0, "billingDayOfMonth": 1},
+    {"name": "Claude", "slug": "claude", "monthlyRate": 25.0, "billingDayOfMonth": 18},
+    {"name": "ChatGPT", "slug": "chatgpt", "monthlyRate": 25.0, "billingDayOfMonth": 18},
 ]
 
 
