@@ -210,6 +210,4 @@ che leggono dal database dichiarano `export const dynamic = "force-dynamic"`.
 
 - Interfaccia, commenti, direttive e messaggi di errore **in italiano**, con accenti
   corretti. Identificatori di codice in inglese.
-- Il repo usa un'identità git locale (`yintong-zhou <zhouyintong96@gmail.com>`) diversa
-  dalla globale: non sovrascriverla, non committare con `--global`.
 - I file intermedi vanno in `.tmp/`, mai committati.
