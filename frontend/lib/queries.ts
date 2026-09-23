@@ -32,6 +32,8 @@ export interface MigrationView {
   } | null;
   effectiveDate: Date;
   closeOld: MigrationCloseOld;
+  /** Periodicità scelta per il nuovo abbonamento, null se resta la stessa. */
+  toPeriodicity: Periodicity | null;
   status: MigrationStatus;
   /** Avviso derivato: null quando non c'è nulla da segnalare. */
   alert: MigrationAlert | null;
@@ -144,6 +146,7 @@ export async function listSubscriptions(
             : null,
           effectiveDate: raw.effectiveDate,
           closeOld: raw.closeOld,
+          toPeriodicity: raw.toPeriodicity ?? null,
           status: raw.status,
           alert: migrationAlert(
             {
@@ -166,7 +169,7 @@ export async function listSubscriptions(
                   oldMonthlyRate: service?.monthlyRate ?? 0,
                   oldPaidForCurrentCycle: computed.paidForCurrentCycle,
                   newMonthlyRate: toService.monthlyRate,
-                  newPeriodicity: sub.periodicity,
+                  newPeriodicity: raw.toPeriodicity ?? sub.periodicity,
                   donationSupplement: sub.donationSupplement,
                 })
               : null,

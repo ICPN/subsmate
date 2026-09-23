@@ -73,6 +73,8 @@ export const migrationCreateSchema = z.object({
   toService: objectId,
   effectiveDate: z.coerce.date(),
   closeOld: z.enum(MIGRATION_CLOSE_OLD).optional(),
+  // Omessa significa «come adesso»: la rotta non la copia, la lascia null.
+  toPeriodicity: z.enum(PERIODICITIES).optional(),
   notes: z.string().optional(),
 });
 

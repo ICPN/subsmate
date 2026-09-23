@@ -1,5 +1,6 @@
 import { Schema, model, models, Types, type InferSchemaType, type Model } from "mongoose";
 import { MIGRATION_CLOSE_OLD, MIGRATION_STATUSES } from "@/lib/migration";
+import { PERIODICITIES } from "@/models/Subscription";
 
 /**
  * Passaggio programmato di una persona da un servizio a un altro.
@@ -30,6 +31,14 @@ const MigrationSchema = new Schema(
       required: true,
       default: "alla_decorrenza",
     },
+    /**
+     * Periodicità del nuovo abbonamento. Null significa «la stessa di prima»:
+     * è il caso normale, e tenerlo distinto da un valore copiato evita di
+     * congelare una scelta che nessuno ha fatto. Sta qui e non si ricava
+     * dall'abbonamento di destinazione perché va scelta alla pianificazione,
+     * settimane prima che quell'abbonamento esista.
+     */
+    toPeriodicity: { type: String, enum: PERIODICITIES, default: null },
     status: {
       type: String,
       enum: MIGRATION_STATUSES,

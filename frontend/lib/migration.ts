@@ -87,9 +87,19 @@ export interface MigrationBalance {
   creditAmount: number;
   /** Dovuto pieno per il primo ciclo del nuovo abbonamento. */
   newTotal: number;
-  /** Positivo: da versare. Negativo: credito a favore, mai un rimborso. */
+  /** Da versare alla decorrenza. Mai negativo: un ciclo pagato non si rimborsa. */
   saldo: number;
-  /** Scomposizione mostrata in interfaccia. Somma sempre al saldo. */
+  /** Cicli interi del nuovo abbonamento che il credito chiude da solo. */
+  coveredCycles: number;
+  /** Credito che avanza dopo i cicli interi, da mettere su quello dopo. */
+  creditRemainder: number;
+  /** Vero quando il credito copre almeno il primo ciclo per intero. */
+  cycleFullyCovered: boolean;
+  /**
+   * Scomposizione mostrata in interfaccia, somma al saldo per costruzione.
+   * Azzerata quando cycleFullyCovered: lì il saldo è zero e la lettura utile
+   * è il numero di cicli coperti.
+   */
   convertedMonths: number;
   convertedAmount: number;
   remainingMonths: number;
@@ -119,16 +129,37 @@ export function migrationBalance(input: MigrationBalanceInput): MigrationBalance
   const quota = serviceQuota(input.newMonthlyRate, input.newPeriodicity);
   const newTotal = totalDue(input.newMonthlyRate, input.newPeriodicity, donation);
 
-  const convertedMonths = Math.min(months, cycleMonths);
-  const remainingMonths = cycleMonths - convertedMonths;
+  // Cambiando periodicità il credito può valere più di un ciclo intero del
+  // nuovo servizio: due mesi accantonati su un servizio caro contro cicli
+  // mensili su uno più economico. Quei cicli si chiudono tutti, altrimenti
+  // il resto andrebbe perso — ed era denaro già incassato.
+  const coveredCycles = newTotal > 0 ? Math.floor(round2(creditAmount / newTotal * 1e6) / 1e6) : 0;
+  const applied = round2(Math.min(creditAmount, newTotal));
+  const saldo = round2(newTotal - applied);
+
+  // La scomposizione «mesi coperti + mesi da aggiungere» descrive un solo
+  // ciclo e somma al saldo per costruzione. Quando il credito copre l'intero
+  // ciclo quella lettura non dice più nulla di utile — il saldo è zero e il
+  // resto vale per i cicli successivi — quindi si azzera e l'interfaccia
+  // mostra invece quanti cicli sono coperti.
+  const cycleFullyCovered = coveredCycles >= 1;
+  const convertedMonths = cycleFullyCovered ? cycleMonths : Math.min(months, cycleMonths);
+  const remainingMonths = cycleFullyCovered ? 0 : cycleMonths - convertedMonths;
   const remainingAmount = round2(remainingMonths * input.newMonthlyRate);
-  const convertedAmount = round2(quota - remainingAmount - creditAmount);
+  const convertedAmount = cycleFullyCovered
+    ? 0
+    : round2(quota - remainingAmount - creditAmount);
 
   return {
     creditMonths: months,
     creditAmount,
     newTotal,
-    saldo: round2(convertedAmount + remainingAmount + donation),
+    saldo,
+    coveredCycles,
+    // Credito che avanza dopo aver chiuso i cicli interi: finisce sul primo
+    // ciclo non coperto come versamento parziale.
+    creditRemainder: round2(creditAmount - coveredCycles * newTotal),
+    cycleFullyCovered,
     convertedMonths,
     convertedAmount,
     remainingMonths,

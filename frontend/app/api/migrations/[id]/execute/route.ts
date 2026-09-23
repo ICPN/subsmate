@@ -3,7 +3,7 @@ import { Migration } from "@/models/Migration";
 import { Subscription } from "@/models/Subscription";
 import { Service } from "@/models/Service";
 import { Payment } from "@/models/Payment";
-import { computeSubscription, coveredPeriod } from "@/lib/billing";
+import { PERIOD_MONTHS, addMonths, computeSubscription, coveredPeriod } from "@/lib/billing";
 import { migrationBalance } from "@/lib/migration";
 import { getMigration } from "@/lib/queries";
 import { ok, fail, handleError } from "@/lib/api";
@@ -80,6 +80,10 @@ async function handlePOST(_request: Request, { params }: Context) {
       now
     );
 
+    // La periodicità può cambiare con la migrazione: se non è stata scelta
+    // resta quella in corso.
+    const newPeriodicity = migration.toPeriodicity ?? oldSubscription.periodicity;
+
     const balance = migrationBalance({
       effectiveDate: new Date(migration.effectiveDate),
       closeOld: migration.closeOld,
@@ -87,7 +91,7 @@ async function handlePOST(_request: Request, { params }: Context) {
       oldMonthlyRate: oldService?.monthlyRate ?? 0,
       oldPaidForCurrentCycle: oldComputed.paidForCurrentCycle,
       newMonthlyRate: newService.monthlyRate,
-      newPeriodicity: oldSubscription.periodicity,
+      newPeriodicity: newPeriodicity,
       donationSupplement: oldSubscription.donationSupplement,
     });
 
@@ -117,7 +121,7 @@ async function handlePOST(_request: Request, { params }: Context) {
         ? await Subscription.findByIdAndUpdate(
             existing._id,
             {
-              periodicity: oldSubscription!.periodicity,
+              periodicity: newPeriodicity,
               donationSupplement: oldSubscription!.donationSupplement,
               onboardingStatus: "attivo",
               startDate: migration!.effectiveDate,
@@ -131,7 +135,7 @@ async function handlePOST(_request: Request, { params }: Context) {
         : await Subscription.create({
             person: migration!.person,
             service: migration!.toService,
-            periodicity: oldSubscription!.periodicity,
+            periodicity: newPeriodicity,
             donationSupplement: oldSubscription!.donationSupplement,
             onboardingStatus: "attivo",
             startDate: migration!.effectiveDate,
@@ -145,16 +149,26 @@ async function handlePOST(_request: Request, { params }: Context) {
     //
     // Non aggiorna lastPaymentDate del nuovo abbonamento: farlo sposterebbe
     // in avanti una scadenza che nessuno ha ancora pagato in denaro.
-      if (balance.creditAmount > 0) {
+      // Il credito si spende ciclo per ciclo, non tutto sul primo: cambiando
+      // periodicità può valerne più di uno, e un solo versamento ancorato al
+      // primo ciclo ne butterebbe via il resto (paidForCycle guarda un solo
+      // periodEnd, e outstanding non scende sotto zero). Un versamento per
+      // ciclo coperto, più uno parziale per quel che avanza.
+      let daSpendere = balance.creditAmount;
+      let ciclo = 0;
+      const mesiCiclo = PERIOD_MONTHS[newPeriodicity];
+      while (daSpendere > 0.004) {
+        const inizioCiclo = addMonths(new Date(migration!.effectiveDate), ciclo * mesiCiclo);
         const { periodStart, periodEnd } = coveredPeriod(
-          new Date(migration!.effectiveDate),
-          oldSubscription!.periodicity,
+          inizioCiclo,
+          newPeriodicity,
           newService!.billingDayOfMonth
         );
+        const importo = Math.round(Math.min(daSpendere, balance.newTotal) * 100) / 100;
         await Payment.create({
           subscription: newSubscription._id,
           person: migration!.person,
-          amount: balance.creditAmount,
+          amount: importo,
           donationAmount: 0,
           paidAt: migration!.effectiveDate,
           method: "altro",
@@ -162,6 +176,22 @@ async function handlePOST(_request: Request, { params }: Context) {
           periodStart,
           periodEnd,
           notes: `Credito da ${oldService?.name ?? "servizio precedente"}: ${balance.creditMonths} mesi`,
+        });
+        daSpendere = Math.round((daSpendere - importo) * 100) / 100;
+        ciclo += 1;
+      }
+
+      // Un ciclo chiuso per intero dal credito è un ciclo pagato: la scadenza
+      // deve avanzare, altrimenti l'abbonamento risulterebbe in ritardo su un
+      // periodo che nessuno deve. Si ferma all'inizio dell'ultimo ciclo
+      // coperto, così quello resta il ciclo corrente e risulta saldato —
+      // esattamente come dopo un versamento in denaro.
+      if (balance.coveredCycles >= 1) {
+        await Subscription.findByIdAndUpdate(newSubscription._id, {
+          lastPaymentDate: addMonths(
+            new Date(migration!.effectiveDate),
+            (balance.coveredCycles - 1) * mesiCiclo
+          ),
         });
       }
 

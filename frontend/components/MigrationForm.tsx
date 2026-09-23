@@ -60,6 +60,9 @@ export function MigrationForm({
     oldNextDueDate ? toDateInputValue(new Date(oldNextDueDate)) : toDateInputValue(new Date())
   );
   const [closeOld, setCloseOld] = useState<MigrationCloseOld>("alla_decorrenza");
+  // Preselezionata su quella in corso: cambiarla e una scelta deliberata,
+  // non il caso normale.
+  const [toPeriodicity, setToPeriodicity] = useState<Periodicity>(periodicity);
 
   const target = services.find((service) => service._id === toService);
   const balance = target
@@ -72,7 +75,7 @@ export function MigrationForm({
         oldMonthlyRate,
         oldPaidForCurrentCycle,
         newMonthlyRate: target.monthlyRate,
-        newPeriodicity: periodicity,
+        newPeriodicity: toPeriodicity,
         donationSupplement,
       })
     : null;
@@ -89,7 +92,7 @@ export function MigrationForm({
     const result = await submitJson(
       `/api/subscriptions/${subscriptionId}/migration`,
       "POST",
-      { toService, effectiveDate, closeOld },
+      { toService, effectiveDate, closeOld, toPeriodicity },
       "Pianificazione non riuscita. Riprova."
     );
 
@@ -116,6 +119,17 @@ export function MigrationForm({
                 {service.name} — {formatEUR(service.monthlyRate)}/mese
               </option>
             ))}
+          </Select>
+        </Field>
+
+        <Field label="Periodicita" hint="Del nuovo abbonamento">
+          <Select
+            name="toPeriodicity"
+            value={toPeriodicity}
+            onChange={(event) => setToPeriodicity(event.target.value as Periodicity)}
+          >
+            <option value="monthly">Mensile</option>
+            <option value="quarterly">Trimestrale</option>
           </Select>
         </Field>
 
@@ -151,7 +165,16 @@ export function MigrationForm({
         <div className="rounded-[var(--radius)] border border-[var(--border)] px-4 py-3 text-sm">
           <table className="w-full">
             <tbody>
-              {balance.convertedMonths > 0 ? (
+              {balance.cycleFullyCovered ? (
+                <tr>
+                  <td className="py-0.5 text-[var(--ink-muted)]">
+                    Credito da spendere ({balance.creditMonths}{" "}
+                    {balance.creditMonths === 1 ? "mese" : "mesi"})
+                  </td>
+                  <td className="py-0.5 text-right tnum">{formatEUR(balance.creditAmount)}</td>
+                </tr>
+              ) : null}
+              {!balance.cycleFullyCovered && balance.convertedMonths > 0 ? (
                 <tr>
                   <td className="py-0.5 text-[var(--ink-muted)]">
                     Mesi coperti dal credito ({balance.convertedMonths})
@@ -159,12 +182,14 @@ export function MigrationForm({
                   <td className="py-0.5 text-right tnum">{formatEUR(balance.convertedAmount)}</td>
                 </tr>
               ) : null}
-              <tr>
-                <td className="py-0.5 text-[var(--ink-muted)]">
-                  Mesi da aggiungere ({balance.remainingMonths})
-                </td>
-                <td className="py-0.5 text-right tnum">{formatEUR(balance.remainingAmount)}</td>
-              </tr>
+              {!balance.cycleFullyCovered ? (
+                <tr>
+                  <td className="py-0.5 text-[var(--ink-muted)]">
+                    Mesi da aggiungere ({balance.remainingMonths})
+                  </td>
+                  <td className="py-0.5 text-right tnum">{formatEUR(balance.remainingAmount)}</td>
+                </tr>
+              ) : null}
               {balance.donationAmount > 0 ? (
                 <tr>
                   <td className="py-0.5 text-[var(--ink-muted)]">Supplemento donazione</td>
@@ -172,19 +197,21 @@ export function MigrationForm({
                 </tr>
               ) : null}
               <tr className="border-t border-[var(--border)]">
-                <td className="pt-1.5 font-medium">
-                  {balance.saldo >= 0 ? "Saldo da versare" : "Credito a favore"}
-                </td>
+                <td className="pt-1.5 font-medium">Saldo da versare</td>
                 <td className="pt-1.5 text-right font-medium tnum">
-                  {formatEUR(Math.abs(balance.saldo))}
+                  {formatEUR(balance.saldo)}
                 </td>
               </tr>
             </tbody>
           </table>
-          {balance.saldo < 0 ? (
+          {balance.coveredCycles >= 1 ? (
             <p className="mt-2 text-xs text-[var(--ink-muted)]">
-              Il credito supera il primo ciclo: si scala dal ciclo successivo, non si
-              rimborsa.
+              Il credito copre {balance.coveredCycles}{" "}
+              {balance.coveredCycles === 1 ? "ciclo intero" : "cicli interi"}: niente da
+              versare alla decorrenza.
+              {balance.creditRemainder > 0
+                ? ` Restano ${formatEUR(balance.creditRemainder)} sul ciclo successivo.`
+                : ""}
             </p>
           ) : null}
         </div>

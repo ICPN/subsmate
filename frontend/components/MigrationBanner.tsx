@@ -14,6 +14,11 @@ import type { MigrationView } from "@/lib/queries";
  * non esiste uno scheduler, quindi questo è l'unico punto in cui la
  * migrazione può davvero scattare.
  */
+const PERIODICITY_LABELS: Record<string, string> = {
+  monthly: "mensile",
+  quarterly: "trimestrale",
+};
+
 export function MigrationBanner({ migration }: { migration: MigrationView }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pending, setPending] = useState(false);
@@ -60,10 +65,15 @@ export function MigrationBanner({ migration }: { migration: MigrationView }) {
         {migration.closeOld === "alla_decorrenza"
           ? "L'abbonamento attuale cessa alla decorrenza."
           : "L'abbonamento attuale resta attivo fino alla sua scadenza."}
+        {migration.toPeriodicity
+          ? ` La periodicita passa a ${PERIODICITY_LABELS[migration.toPeriodicity]}.`
+          : null}
         {migration.balance
-          ? migration.balance.saldo >= 0
-            ? ` Saldo da versare ${formatEUR(migration.balance.saldo)}.`
-            : ` Credito a favore ${formatEUR(Math.abs(migration.balance.saldo))}.`
+          ? migration.balance.coveredCycles >= 1
+            ? ` Il credito copre ${migration.balance.coveredCycles} ${
+                migration.balance.coveredCycles === 1 ? "ciclo intero" : "cicli interi"
+              }: niente da versare alla decorrenza.`
+            : ` Saldo da versare ${formatEUR(migration.balance.saldo)}.`
           : null}
       </p>
       <div className="mt-3 flex flex-wrap gap-2">

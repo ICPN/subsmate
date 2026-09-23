@@ -44,6 +44,12 @@ async function handlePOST(request: Request, { params }: Context) {
       toService: data.toService,
       effectiveDate: data.effectiveDate,
       closeOld: data.closeOld ?? "alla_decorrenza",
+      // Solo se diversa da quella in corso: un valore uguale sarebbe una
+      // scelta congelata dove non ce n'è stata nessuna.
+      toPeriodicity:
+        data.toPeriodicity && data.toPeriodicity !== subscription.periodicity
+          ? data.toPeriodicity
+          : null,
       notes: data.notes ?? "",
     });
 
