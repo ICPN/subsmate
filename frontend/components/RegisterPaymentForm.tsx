@@ -162,10 +162,12 @@ export function RegisterPaymentForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 px-5 py-5">
-      <div className="grid gap-4 sm:grid-cols-2">
+    <form onSubmit={handleSubmit} className="@container space-y-4 px-4 py-5">
+      {/* Colonne dalla larghezza del form, non dello schermo: lo stesso form
+          sta in un modale stretto e nella scheda a tutta larghezza. */}
+      <div className="grid grid-cols-1 gap-4 @md:grid-cols-2 @3xl:grid-cols-3">
         {chooseSubscription ? (
-          <div className="sm:col-span-2">
+          <div className="col-span-full">
             {/* Non usa Field: quello avvolge i figli in un <label>, e un label
                 che contiene bottoni e una listbox ne dirotta i clic. */}
             <span className="mb-1 block text-xs font-medium text-[var(--ink-muted)]">

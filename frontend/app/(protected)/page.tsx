@@ -65,7 +65,7 @@ export default async function DashboardPage({
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-6">
         <StatCard
           label="Dovuto nel ciclo corrente"
           value={formatEUR(totals.dueThisCycle)}
@@ -108,7 +108,7 @@ export default async function DashboardPage({
         />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card
           title="Per servizio"
           action={
@@ -149,13 +149,13 @@ export default async function DashboardPage({
                           <ServiceMark name={row.name} logo={row.logo} />
                         </Link>
                       </Td>
-                      <Td align="right" className="tnum">
+                      <Td label="Attivi" align="right" className="tnum">
                         {row.activeSubscriptions}
                       </Td>
-                      <Td align="right" className="tnum font-medium">
+                      <Td label="Per ciclo" align="right" className="tnum font-medium">
                         {formatEUR(row.dueThisCycle)}
                       </Td>
-                      <Td align="right" className="tnum">
+                      <Td label="In ritardo" align="right" className="tnum">
                         {row.late > 0 ? (
                           <span style={{ color: "var(--status-critical)" }}>{row.late}</span>
                         ) : (
@@ -207,14 +207,14 @@ export default async function DashboardPage({
                         key={String(payment._id)}
                         className="border-b border-[var(--border)] last:border-0"
                       >
-                        <Td className="tnum whitespace-nowrap">{formatDate(payment.paidAt)}</Td>
+                        <Td label="Data" className="tnum whitespace-nowrap">{formatDate(payment.paidAt)}</Td>
                         <Td>
                           {person ? `${person.firstName} ${person.lastName}` : "Persona rimossa"}
                         </Td>
-                        <Td align="right" className="tnum font-medium">
+                        <Td label="Importo" align="right" className="tnum font-medium">
                           {formatEUR(payment.amount)}
                         </Td>
-                        <Td>
+                        <Td label="Tipo">
                           {payment.kind === "credito_migrazione" ? (
                             <Pill>Credito migrazione</Pill>
                           ) : (
@@ -264,15 +264,15 @@ export default async function DashboardPage({
                         {sub.person ? `${sub.person.firstName} ${sub.person.lastName}` : "—"}
                       </Link>
                     </Td>
-                    <Td>
+                    <Td label="Passaggio">
                       {sub.service?.name ?? "—"} verso{" "}
                       {sub.migration?.toService?.name ?? "servizio rimosso"}
                       <MigrationBadge alert={sub.migration?.alert ?? null} />
                     </Td>
-                    <Td className="tnum whitespace-nowrap">
+                    <Td label="Decorrenza" className="tnum whitespace-nowrap">
                       {formatDate(sub.migration?.effectiveDate ?? null)}
                     </Td>
-                    <Td align="right" className="tnum font-medium">
+                    <Td label="Saldo" align="right" className="tnum font-medium">
                       {sub.migration?.balance ? formatEUR(sub.migration.balance.saldo) : "—"}
                     </Td>
                   </tr>
@@ -342,7 +342,7 @@ export default async function DashboardPage({
                         {sub.person?.email}
                       </span>
                     </Td>
-                    <Td>
+                    <Td label="Servizio">
                       {sub.service ? (
                         <ServiceMark name={sub.service.name} logo={sub.service.logo} />
                       ) : (
@@ -350,13 +350,13 @@ export default async function DashboardPage({
                       )}
                       <MigrationBadge alert={sub.migration?.alert ?? null} />
                     </Td>
-                    <Td>
+                    <Td label="Scadenza" className="whitespace-nowrap">
                       <span className="tnum">{formatDate(sub.computed.nextDueDate)}</span>
                       <span className="block text-xs text-[var(--ink-muted)]">
                         {statusDetail(sub.computed.status, sub.computed.daysToDue)}
                       </span>
                     </Td>
-                    <Td align="right" className="tnum font-medium">
+                    <Td label="Dovuto" align="right" className="tnum font-medium">
                       {formatEUR(sub.computed.totalDue)}
                       {sub.computed.outstanding > 0 ? (
                         <span
@@ -367,7 +367,7 @@ export default async function DashboardPage({
                         </span>
                       ) : null}
                     </Td>
-                    <Td>
+                    <Td label="Stato">
                       <StatusBadge status={sub.computed.status} />
                     </Td>
                   </tr>
@@ -378,7 +378,7 @@ export default async function DashboardPage({
         )}
       </Card>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
         <StatCard
           label="Persone"
           value={String(registry.people)}

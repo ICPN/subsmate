@@ -183,7 +183,7 @@ export function SubscriptionsTable({
                       {sub.person?.email}
                     </span>
                   </Td>
-                  <Td>
+                  <Td label="Servizio">
                     {sub.service ? (
                       <ServiceMark name={sub.service.name} logo={sub.service.logo} />
                     ) : (
@@ -191,18 +191,18 @@ export function SubscriptionsTable({
                     )}
                     <MigrationBadge alert={sub.migration?.alert ?? null} />
                   </Td>
-                  <Td>
+                  <Td label="Periodicità">
                     <Pill>{PERIODICITY_LABELS[sub.periodicity] ?? sub.periodicity}</Pill>
                   </Td>
-                  <Td align="right" className="tnum">
+                  <Td label="Quota" align="right" className="tnum">
                     {formatEUR(sub.computed.serviceQuota)}
                   </Td>
-                  <Td align="right" className="tnum">
+                  <Td label="Donazione" align="right" className="tnum">
                     {sub.computed.donationSupplement > 0
                       ? formatEUR(sub.computed.donationSupplement)
                       : "—"}
                   </Td>
-                  <Td align="right" className="tnum font-medium">
+                  <Td label="Totale" align="right" className="tnum font-medium">
                     {formatEUR(sub.computed.totalDue)}
                     {sub.computed.outstanding > 0 ? (
                       <span
@@ -213,8 +213,8 @@ export function SubscriptionsTable({
                       </span>
                     ) : null}
                   </Td>
-                  <Td className="tnum whitespace-nowrap">{formatDate(sub.computed.nextDueDate)}</Td>
-                  <Td>
+                  <Td label="Scadenza" className="tnum whitespace-nowrap">{formatDate(sub.computed.nextDueDate)}</Td>
+                  <Td label="Stato">
                     <StatusBadge status={sub.computed.status} />
                   </Td>
                   <Td align="right">

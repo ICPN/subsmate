@@ -49,9 +49,9 @@ export function Modal({
         aria-modal="true"
         aria-labelledby="modal-title"
         tabIndex={-1}
-        className="max-h-[90vh] w-full overflow-y-auto rounded-t-[var(--radius)] border border-[var(--border)] bg-[var(--paper)] shadow-lg outline-none sm:max-w-lg sm:rounded-[var(--radius)]"
+        className="max-h-[90dvh] w-full overflow-y-auto rounded-t-[var(--radius)] border border-[var(--border)] bg-[var(--paper)] shadow-lg outline-none sm:max-w-lg sm:rounded-[var(--radius)]"
       >
-        <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4">
+        <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-4">
           <h2
             id="modal-title"
             className="font-[family-name:var(--font-manrope)] text-[18px] font-semibold"

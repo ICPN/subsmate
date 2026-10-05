@@ -68,7 +68,7 @@ export function StatCard({
   } as const;
 
   const base =
-    "block rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] px-4 py-5 text-center";
+    "block rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] px-3 py-4 text-center sm:px-4 sm:py-5";
   // Il feedback del click è bordo e sfondo, mai uno dei quattro colori di
   // stato: quelli restano riservati allo stato di un abbonamento.
   const interattivo =
@@ -77,7 +77,7 @@ export function StatCard({
   const contenuto = (
     <>
       <p
-        className="tnum font-[family-name:var(--font-manrope)] text-[32px] font-bold leading-none"
+        className="tnum font-[family-name:var(--font-manrope)] text-[24px] font-bold leading-none sm:text-[32px]"
         style={{ color: TONES[tone] }}
       >
         {value}
@@ -96,7 +96,7 @@ export function StatCard({
 }
 
 const BUTTON_BASE =
-  "inline-flex items-center justify-center rounded-[var(--radius)] px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex items-center justify-center whitespace-nowrap rounded-[var(--radius)] px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50";
 
 export const buttonPrimary = `${BUTTON_BASE} bg-[var(--ink-navy)] text-white hover:bg-[#232a42]`;
 export const buttonSecondary = `${BUTTON_BASE} border border-[var(--border)] bg-transparent text-[var(--ink-navy)] hover:bg-[var(--surface)]`;
@@ -120,10 +120,13 @@ export function LinkButton({
 /**
  * Involucro tabella: è l'unico elemento che scorre in orizzontale. Serve anche a
  * isolare la larghezza minima della tabella dal resto della pagina, che non deve mai
- * poter scorrere lateralmente.
+ * poter scorrere lateralmente. Sotto i 1024px la tabella diventa un elenco di
+ * schede (classe `table-stack`, globals.css) e non scorre più.
  */
 export function TableWrap({ children }: { children: ReactNode }) {
-  return <div className="w-full max-w-full overflow-x-auto overscroll-x-contain">{children}</div>;
+  return (
+    <div className="table-stack w-full max-w-full overflow-x-auto overscroll-x-contain">{children}</div>
+  );
 }
 
 export function Th({
@@ -136,7 +139,7 @@ export function Th({
   return (
     <th
       scope="col"
-      className={`px-4 py-2.5 text-xs font-medium text-[var(--ink-muted)] ${
+      className={`whitespace-nowrap px-4 py-2.5 text-xs font-medium text-[var(--ink-muted)] ${
         align === "right" ? "text-right" : "text-left"
       }`}
     >
@@ -150,6 +153,8 @@ export function Th({
  * nell'URL ed è condivisibile, e funziona anche senza JavaScript.
  * L'indicatore di direzione è informativo, non decorativo: le guidelines
  * vietano le frecce ornamentali sui link, non i segni che portano un dato.
+ * Nelle colonne a destra la freccia sta prima dell'etichetta: anche quando è
+ * invisibile occupa spazio, e in coda staccherebbe il titolo dai numeri.
  */
 export function SortableTh({
   children,
@@ -171,15 +176,15 @@ export function SortableTh({
     <th
       scope="col"
       aria-sort={active ? (ascending ? "ascending" : "descending") : "none"}
-      className={`px-4 py-2.5 text-xs font-medium text-[var(--ink-muted)] ${
+      className={`whitespace-nowrap px-4 py-2.5 text-xs font-medium text-[var(--ink-muted)] ${
         align === "right" ? "text-right" : "text-left"
       }`}
     >
       <Link
         href={hrefFor(sortKey)}
         className={`inline-flex items-center gap-1 rounded-[var(--radius)] underline-offset-2 hover:underline ${
-          active ? "text-[var(--ink-navy)]" : ""
-        }`}
+          align === "right" ? "flex-row-reverse" : ""
+        } ${active ? "text-[var(--ink-navy)]" : ""}`}
       >
         {children}
         <span aria-hidden className={active ? "" : "opacity-0"}>
@@ -190,20 +195,29 @@ export function SortableTh({
   );
 }
 
+/**
+ * `label` è il nome della colonna ripetuto nella scheda mobile. Senza, la cella
+ * fa da titolo della scheda (o da riga azioni, se è l'ultima). Il contenuto sta
+ * in un div perché nella scheda la cella è una riga flex: testo e righe
+ * secondarie devono restare un blocco solo accanto all'etichetta.
+ */
 export function Td({
   children,
   align = "left",
   className = "",
+  label,
 }: {
   children: ReactNode;
   align?: "left" | "right";
   className?: string;
+  label?: string;
 }) {
   return (
     <td
+      data-label={label}
       className={`px-4 py-2 align-middle ${align === "right" ? "text-right" : "text-left"} ${className}`}
     >
-      {children}
+      <div className="min-w-0">{children}</div>
     </td>
   );
 }
@@ -226,7 +240,7 @@ export function EmptyState({ title, children }: { title: string; children?: Reac
  */
 export function ServiceMark({ name, logo }: { name: string; logo?: string | null }) {
   return (
-    <span className="inline-flex items-center gap-2">
+    <span className="flex w-fit items-center gap-2">
       <span
         aria-hidden
         className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--surface)] font-[family-name:var(--font-manrope)] text-xs font-semibold text-[var(--ink-muted)]"

@@ -64,6 +64,86 @@ h3 {
   font-variant-numeric: tabular-nums;
 }
 
+/*
+ * Tabelle su schermo stretto: ogni riga diventa una scheda, con le celle su
+ * due colonne ed etichetta sopra il valore. Solo CSS, stesso markup:
+ * l'etichetta viene da `data-label` (prop `label` di Td). La cella senza
+ * etichetta che non è l'ultima fa da titolo e sale in cima; l'ultima senza
+ * etichetta sono le azioni. Entrambe occupano tutta la larghezza.
+ * L'intestazione resta, ridotta a una riga di link di ordinamento.
+ * Regole fuori dai layer di Tailwind: vincono sulle utility delle celle.
+ */
+@media (width < 64rem) {
+  .table-stack table,
+  .table-stack tbody,
+  .table-stack thead {
+    display: block;
+  }
+  .table-stack thead tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.875rem;
+    padding: 0.625rem 1rem;
+  }
+  .table-stack thead tr::before {
+    content: "Ordina per";
+    font-size: 12px;
+    color: var(--ink-muted);
+  }
+  .table-stack th {
+    padding: 0;
+  }
+  .table-stack th:not([aria-sort]) {
+    display: none;
+  }
+  .table-stack thead:not(:has(th[aria-sort])) {
+    display: none;
+  }
+  /* La freccia invisibile delle colonne non ordinate qui spazierebbe male i link. */
+  .table-stack th[aria-sort="none"] [aria-hidden] {
+    display: none;
+  }
+  .table-stack tbody tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.625rem 1rem;
+    padding: 0.875rem 1rem;
+  }
+  .table-stack td {
+    display: block;
+    padding: 0;
+    text-align: left;
+    white-space: normal;
+  }
+  .table-stack td::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-muted);
+  }
+  .table-stack td:not([data-label]) {
+    grid-column: 1 / -1;
+  }
+  .table-stack td:not([data-label])::before {
+    content: none;
+  }
+  .table-stack td:not([data-label]):not(:last-child) {
+    order: -1;
+  }
+  .table-stack td:not([data-label]):last-child {
+    text-align: right;
+  }
+}
+
+/* Tablet: stessa scheda, quattro valori per riga invece di due. */
+@media (40rem <= width < 64rem) {
+  .table-stack tbody tr {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
 /* Focus visibile e coerente su tutti i controlli, senza ombre decorative. */
 :where(a, button, input, select, textarea):focus-visible {
   outline: 2px solid var(--ink-navy);

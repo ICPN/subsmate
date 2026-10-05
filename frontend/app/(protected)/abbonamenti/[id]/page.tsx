@@ -88,7 +88,7 @@ export default async function SubscriptionDetailPage({
         title={personName}
         description={sub.person?.email}
         action={
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={sub.computed.status} />
             <SubscriptionRowActions
               subscription={{
@@ -124,7 +124,7 @@ export default async function SubscriptionDetailPage({
 
       {sub.migration ? <MigrationBanner migration={sub.migration} /> : null}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <DetailTile label="Servizio">
           {sub.service ? <ServiceMark name={sub.service.name} logo={sub.service.logo} /> : "—"}
         </DetailTile>
@@ -159,7 +159,8 @@ export default async function SubscriptionDetailPage({
         </DetailTile>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+      {/* Uno sotto l'altro: lo storico ha sei colonne e affiancato al form non ci stava. */}
+      <div className="grid grid-cols-1 gap-6">
         <Card title="Registra pagamento">
           <RegisterPaymentForm
             subscriptionId={String(sub._id)}
@@ -227,21 +228,21 @@ export default async function SubscriptionDetailPage({
                       key={String(payment._id)}
                       className="border-b border-[var(--border)] last:border-0"
                     >
-                      <Td className="tnum">{formatDate(payment.paidAt)}</Td>
-                      <Td align="right" className="tnum font-medium">
+                      <Td className="tnum whitespace-nowrap font-medium">{formatDate(payment.paidAt)}</Td>
+                      <Td label="Importo" align="right" className="tnum font-medium">
                         {formatEUR(payment.amount)}
                       </Td>
-                      <Td align="right" className="tnum">
+                      <Td label="Donazione" align="right" className="tnum">
                         {payment.donationAmount ? formatEUR(payment.donationAmount) : "—"}
                       </Td>
-                      <Td>
+                      <Td label="Metodo">
                         {payment.kind === "credito_migrazione" ? (
                           <Pill>Credito migrazione</Pill>
                         ) : (
                           <Pill>{payment.method}</Pill>
                         )}
                       </Td>
-                      <Td className="tnum text-[var(--ink-muted)]">
+                      <Td label="Periodo coperto" className="tnum whitespace-nowrap text-[var(--ink-muted)]">
                         {formatDate(payment.periodStart)} – {formatDate(payment.periodEnd)}
                       </Td>
                       <Td align="right">

@@ -65,7 +65,7 @@ export default async function PeoplePage({
         action={<NewPersonButton />}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
         <StatCard label="Persone registrate" value={String(people.length)} />
         <StatCard
           label="Abbonamenti attivi"
@@ -139,9 +139,9 @@ export default async function PeoplePage({
                           </span>
                         ) : null}
                       </Td>
-                      <Td className="text-[var(--ink-muted)]">{person.email}</Td>
-                      <Td>
-                        <span className="flex flex-wrap gap-1.5">
+                      <Td label="Email" className="text-[var(--ink-muted)]">{person.email}</Td>
+                      <Td label="Servizi">
+                        <span className="inline-flex flex-wrap gap-1.5">
                           {agg.services.length === 0 ? (
                             <span className="text-[var(--ink-muted)]">—</span>
                           ) : (
@@ -149,10 +149,10 @@ export default async function PeoplePage({
                           )}
                         </span>
                       </Td>
-                      <Td align="right" className="tnum">
+                      <Td label="Abbonamenti attivi" align="right" className="tnum">
                         {agg.count}
                       </Td>
-                      <Td align="right" className="tnum font-medium">
+                      <Td label="Totale dovuto" align="right" className="tnum font-medium">
                         {formatEUR(agg.total)}
                       </Td>
                       <Td align="right">

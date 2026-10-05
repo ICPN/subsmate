@@ -52,8 +52,8 @@ export function PersonForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 px-5 py-5">
-      <div className="grid gap-4 sm:grid-cols-2">
+    <form onSubmit={handleSubmit} className="space-y-4 px-4 py-5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Nome">
           <TextInput name="firstName" defaultValue={initialValues?.firstName} required />
         </Field>

@@ -11,8 +11,8 @@ export function PageHeader({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-start justify-between gap-3">
-      <div>
+    <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+      <div className="min-w-0 break-words">
         <h1 className="font-[family-name:var(--font-manrope)] text-[28px] font-bold leading-tight">
           {title}
         </h1>

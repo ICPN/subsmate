@@ -54,7 +54,7 @@ export function ConfirmDialog({
 
   return (
     <Modal open={open} onClose={onClose} title={title}>
-      <div className="space-y-4 px-5 py-5">
+      <div className="space-y-4 px-4 py-5">
         <div className="text-sm text-[var(--ink-muted)]">{message}</div>
         {error ? <ErrorMessage>{error}</ErrorMessage> : null}
         <div className="flex justify-end gap-3">

@@ -103,17 +103,14 @@ export default async function SubscriptionsPage({
   };
 
   return (
-    // La tabella ha nove colonne: da lg in su recupera larghezza sfondando i margini
-    // laterali del contenitore. I valori restano sotto la larghezza del breakpoint
-    // corrispondente, quindi la pagina non può mai scorrere in orizzontale.
-    <div className="space-y-6 lg:-mx-4 xl:-mx-10 2xl:-mx-32">
+    <div className="space-y-6">
       <PageHeader
         title="Abbonamenti"
         description="Una riga per ogni coppia persona × servizio. Quota, scadenza e stato sono calcolati dall'ultimo pagamento registrato."
         action={<NewSubscriptionButton people={peopleOptions} services={serviceOptions} />}
       />
 
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+      <div className="flex flex-wrap items-start gap-x-8 gap-y-3">
         <FilterGroup
           legend="Stato"
           options={STATUS_FILTERS.map((option) => ({
@@ -149,7 +146,11 @@ export default async function SubscriptionsPage({
   );
 }
 
-/** Gruppo di filtri come link: lo stato del filtro resta nell'URL, condivisibile. */
+/**
+ * Gruppo di filtri come link: lo stato del filtro resta nell'URL, condivisibile.
+ * L'etichetta ha larghezza fissa e i filtri vanno a capo nella propria colonna:
+ * su schermo stretto le righe dei due gruppi restano incolonnate fra loro.
+ */
 function FilterGroup({
   legend,
   options,
@@ -158,8 +159,11 @@ function FilterGroup({
   options: { label: string; href: string; active: boolean }[];
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="text-xs font-medium text-[var(--ink-muted)]">{legend}</span>
+    <div className="flex items-start gap-2">
+      <span className="w-14 shrink-0 text-xs font-medium leading-[26px] text-[var(--ink-muted)]">
+        {legend}
+      </span>
+      <div className="flex flex-wrap gap-2">
       {options.map((option) => (
         <Link
           key={option.href + option.label}
@@ -167,13 +171,14 @@ function FilterGroup({
           aria-current={option.active ? "true" : undefined}
           className={
             option.active
-              ? "rounded-[var(--radius)] bg-[var(--ink-navy)] px-2.5 py-1 text-xs font-medium text-white"
+              ? "rounded-[var(--radius)] border border-[var(--ink-navy)] bg-[var(--ink-navy)] px-2.5 py-1 text-xs font-medium text-white"
               : "rounded-[var(--radius)] border border-[var(--border)] px-2.5 py-1 text-xs font-medium text-[var(--ink-navy)] hover:bg-[var(--surface)]"
           }
         >
           {option.label}
         </Link>
       ))}
+      </div>
     </div>
   );
 }

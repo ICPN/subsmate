@@ -129,22 +129,22 @@ export default async function ServicesPage({
                       <Td>
                         <ServiceMark name={service.name} logo={service.logo} />
                       </Td>
-                      <Td align="right" className="tnum font-medium">
+                      <Td label="Tariffa mensile" align="right" className="tnum font-medium">
                         {formatEUR(service.monthlyRate)}
                       </Td>
-                      <Td align="right" className="tnum text-[var(--ink-muted)]">
+                      <Td label="Trimestrale" align="right" className="tnum text-[var(--ink-muted)]">
                         {formatEUR(service.monthlyRate * 3)}
                       </Td>
-                      <Td align="right" className="tnum">
+                      <Td label="Giorno addebito" align="right" className="tnum">
                         {service.billingDayOfMonth}
                       </Td>
-                      <Td align="right" className="tnum">
+                      <Td label="Abbonati attivi" align="right" className="tnum">
                         {stats.subscribers}
                       </Td>
-                      <Td align="right" className="tnum font-medium">
+                      <Td label="Quote per ciclo" align="right" className="tnum font-medium">
                         {formatEUR(stats.due)}
                       </Td>
-                      <Td>
+                      <Td label="Stato">
                         <Pill>{service.active ? "Attivo" : "Disattivato"}</Pill>
                       </Td>
                       <Td align="right">

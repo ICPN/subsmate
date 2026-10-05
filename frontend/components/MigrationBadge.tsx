@@ -12,7 +12,7 @@ export function MigrationBadge({ alert }: { alert: MigrationAlert | null }) {
   const color = alert.kind === "in_ritardo" ? "var(--status-critical)" : "var(--status-warn)";
   return (
     <span
-      className="mt-1 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+      className="mt-1 flex w-fit items-center whitespace-nowrap rounded-[var(--radius)] px-2 py-0.5 text-xs font-medium"
       style={{ color, border: `1px solid ${color}` }}
     >
       {alert.label}

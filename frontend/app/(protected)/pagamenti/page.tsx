@@ -105,7 +105,7 @@ export default async function PaymentsPage({
         action={<NewPaymentButton subscriptions={subscriptionOptions} />}
       />
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
         <StatCard label="Pagamenti registrati" value={String(allPayments.length)} />
         <StatCard label="Totale incassato" value={formatEUR(collected)} />
         <StatCard label="di cui donazioni" value={formatEUR(donations)} />
@@ -186,7 +186,7 @@ export default async function PaymentsPage({
                       key={String(payment._id)}
                       className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--surface)]"
                     >
-                      <Td className="tnum">{formatDate(payment.paidAt)}</Td>
+                      <Td label="Data" className="tnum whitespace-nowrap">{formatDate(payment.paidAt)}</Td>
                       <Td>
                         <span className="font-medium">
                           {person ? `${person.firstName} ${person.lastName}` : "—"}
@@ -195,23 +195,23 @@ export default async function PaymentsPage({
                           {person?.email}
                         </span>
                       </Td>
-                      <Td align="right" className="tnum font-medium">
+                      <Td label="Importo" align="right" className="tnum font-medium">
                         {formatEUR(payment.amount)}
                       </Td>
-                      <Td align="right" className="tnum">
+                      <Td label="di cui donazione" align="right" className="tnum">
                         {payment.donationAmount ? formatEUR(payment.donationAmount) : "—"}
                       </Td>
-                      <Td>
+                      <Td label="Metodo">
                         {payment.kind === "credito_migrazione" ? (
                           <Pill>Credito migrazione</Pill>
                         ) : (
                           <Pill>{payment.method}</Pill>
                         )}
                       </Td>
-                      <Td className="tnum text-[var(--ink-muted)]">
+                      <Td label="Periodo coperto" className="tnum whitespace-nowrap text-[var(--ink-muted)]">
                         {formatDate(payment.periodStart)} – {formatDate(payment.periodEnd)}
                       </Td>
-                      <Td className="text-[var(--ink-muted)]">{payment.reference || "—"}</Td>
+                      <Td label="Riferimento" className="text-[var(--ink-muted)]">{payment.reference || "—"}</Td>
                       <Td align="right">
                         <PaymentRowActions
                           subscriptionId={String(payment.subscription)}
