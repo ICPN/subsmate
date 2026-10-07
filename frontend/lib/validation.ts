@@ -32,12 +32,15 @@ export const personCreateSchema = z.object({
 });
 export const personUpdateSchema = personCreateSchema.partial();
 
+// Niente .default() qui: con Zod 4 un default sopravvive a .partial(), e la
+// PATCH riportava a mensile, donazione 0 e "da attivare" ogni campo non
+// inviato. I valori iniziali li mette lo schema Mongoose alla creazione.
 export const subscriptionCreateSchema = z.object({
   person: objectId,
   service: objectId,
-  periodicity: z.enum(PERIODICITIES).default("monthly"),
-  donationSupplement: z.coerce.number().min(0).default(0),
-  onboardingStatus: z.enum(ONBOARDING_STATUSES).default("da_attivare"),
+  periodicity: z.enum(PERIODICITIES).optional(),
+  donationSupplement: z.coerce.number().min(0).optional(),
+  onboardingStatus: z.enum(ONBOARDING_STATUSES).optional(),
   startDate: optionalDate,
   lastPaymentDate: optionalDate,
   notes: z.string().optional(),

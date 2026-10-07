@@ -214,19 +214,26 @@ export default async function PaymentsPage({
                       </Td>
                       <Td label="Riferimento" className="text-[var(--ink-muted)]">{payment.reference || "—"}</Td>
                       <Td align="right">
-                        <PaymentRowActions
-                          canEdit={payment.kind !== "credito_primo_mese"}
-                          subscriptionId={String(payment.subscription)}
-                          payment={{
-                            _id: String(payment._id),
-                            amount: payment.amount,
-                            donationAmount: payment.donationAmount ?? 0,
-                            paidAt: new Date(payment.paidAt).toISOString(),
-                            method: payment.method ?? "bonifico",
-                            reference: payment.reference ?? "",
-                            notes: payment.notes ?? "",
-                          }}
-                        />
+                        {/* Come nella scheda abbonamento: il credito di migrazione si
+                            disfa annullando la migrazione, la rotta rifiuta modifica
+                            e cancellazione. */}
+                        {payment.kind === "credito_migrazione" ? (
+                          <span className="text-xs text-[var(--ink-muted)]">—</span>
+                        ) : (
+                          <PaymentRowActions
+                            canEdit={payment.kind !== "credito_primo_mese"}
+                            subscriptionId={String(payment.subscription)}
+                            payment={{
+                              _id: String(payment._id),
+                              amount: payment.amount,
+                              donationAmount: payment.donationAmount ?? 0,
+                              paidAt: new Date(payment.paidAt).toISOString(),
+                              method: payment.method ?? "bonifico",
+                              reference: payment.reference ?? "",
+                              notes: payment.notes ?? "",
+                            }}
+                          />
+                        )}
                       </Td>
                     </tr>
                   );

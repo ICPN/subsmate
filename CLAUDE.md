@@ -254,3 +254,6 @@ che leggono dal database dichiarano `export const dynamic = "force-dynamic"`.
 - Interfaccia, commenti, direttive e messaggi di errore **in italiano**, con accenti
   corretti. Identificatori di codice in inglese.
 - I file intermedi vanno in `.tmp/`, mai committati.
+- **Niente `.default()` negli schemi Zod da cui si ricava un `.partial()`**: con Zod 4 il
+  default sopravvive, e una PATCH parziale sovrascrive i campi non inviati. I valori
+  iniziali li mette lo schema Mongoose. È già successo con `subscriptionUpdateSchema`.
