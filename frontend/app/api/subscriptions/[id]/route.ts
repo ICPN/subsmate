@@ -5,7 +5,7 @@ import { Person } from "@/models/Person";
 import { Service } from "@/models/Service";
 import { subscriptionUpdateSchema } from "@/lib/validation";
 import { ok, fail, handleError, parseBody } from "@/lib/api";
-import { computeSubscription } from "@/lib/billing";
+import { computeSubscription, firstCycleCredit } from "@/lib/billing";
 import { withAdmin } from "@/lib/requireAdmin";
 
 type Context = { params: Promise<{ id: string }> };
@@ -55,7 +55,28 @@ async function handlePATCH(request: Request, { params }: Context) {
     const { data, error } = await parseBody(request, subscriptionUpdateSchema);
     if (error) return error;
 
-    const subscription = await Subscription.findByIdAndUpdate(id, data, {
+    // Il credito del primo mese si fissa quando arriva l'addebito del
+    // fornitore, sulla tariffa di quel momento: se poi la tariffa cambia, il
+    // credito resta quello che la persona ha versato allora.
+    // Il modulo lo reinvia a ogni salvataggio: si ricalcola solo se cambia,
+    // o un salvataggio qualsiasi sposterebbe il credito sulla tariffa nuova.
+    const update: Record<string, unknown> = { ...data };
+    if (data.firstCycleProviderCharge !== undefined) {
+      const current = await Subscription.findById(id)
+        .populate<{ service: { monthlyRate: number } | null }>("service", "monthlyRate")
+        .lean();
+      if (!current) return fail("Abbonamento non trovato", 404);
+      if ((current.firstCycleProviderCharge ?? null) === data.firstCycleProviderCharge) {
+        delete update.firstCycleProviderCharge;
+      } else {
+        update.firstCycleCredit =
+          data.firstCycleProviderCharge === null
+            ? null
+            : firstCycleCredit(current.service?.monthlyRate ?? 0, data.firstCycleProviderCharge);
+      }
+    }
+
+    const subscription = await Subscription.findByIdAndUpdate(id, update, {
       new: true,
       runValidators: true,
     }).lean();

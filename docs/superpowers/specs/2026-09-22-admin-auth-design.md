@@ -167,6 +167,21 @@ python execution/seed_admin.py --email "yintong.zhou@icpn.it" --name "Yintong Zh
 - Se `AUTH_SECRET` manca in `frontend/.env.local`, lo genera (32 byte casuali, base64url) e lo
   aggiunge in coda senza toccare le righe esistenti.
 
+## Profilo (aggiunto il 2026-10-07)
+
+L'admin collegato cambia la propria email e la propria password da `/profilo`, con
+`PATCH /api/account`. Non è un reset: la creazione degli account resta solo nello script.
+
+- La rotta agisce sull'admin della sessione (`getCurrentAdmin()`), mai su un id del corpo.
+- Serve sempre la password attuale. Gli errori usano lo stesso contatore del login
+  (`registerFailedAttempt` in `lib/auth.ts`): senza, un cookie rubato basterebbe a
+  indovinare la password per tentativi e a prendersi l'account.
+- Cambio password: hash bcryptjs cost 12 (`hashPassword`), `passwordChangedAt` aggiornato,
+  quindi le altre sessioni si chiudono; la sessione corrente riceve un token nuovo firmato
+  dopo il cambio e resta aperta. Minimo 12 caratteri, come lo script.
+- Cambio email: salvata in minuscolo, 409 se già usata da un altro account. Non chiude le
+  sessioni. Nessuna conferma via link: l'app non invia email.
+
 ## Verifica
 
 Manuale, contro il MongoDB locale. Il repo non ha framework di test e non se ne introduce uno.
@@ -182,7 +197,7 @@ Manuale, contro il MongoDB locale. Il repo non ha framework di test e non se ne 
 ## Fuori scope
 
 - Permessi differenziati per ruolo
-- Reset password self-service, recupero via email, inviti
+- Reset password self-service senza la password attuale, recupero via email, inviti
 - 2FA
 - Lista e chiusura delle sessioni attive per dispositivo
 - Rate limiting per indirizzo IP (il blocco è per account)

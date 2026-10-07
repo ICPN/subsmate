@@ -3,8 +3,10 @@ import { Schema, model, models, Types, type InferSchemaType, type Model } from "
 export const PAYMENT_METHODS = ["bonifico", "contanti", "paypal", "satispay", "altro"] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
-export const PAYMENT_KINDS = ["incasso", "credito_migrazione"] as const;
+export const PAYMENT_KINDS = ["incasso", "credito_migrazione", "credito_primo_mese"] as const;
 export type PaymentKind = (typeof PAYMENT_KINDS)[number];
+// I tipi "credito" e la loro esclusione dagli aggregati: CREDIT_KINDS in
+// lib/billing.ts, importabile anche dai Client Component senza mongoose.
 
 /**
  * Riga dello storico pagamenti. Correggibile ma non riassegnabile: importo,
@@ -32,7 +34,9 @@ const PaymentSchema = new Schema(
     // "credito_migrazione" è denaro già incassato sul vecchio abbonamento e
     // riconosciuto come sconto sul primo ciclo del nuovo: chiude il ciclo
     // come un versamento, ma NON va sommato agli incassi, altrimenti si
-    // conterebbe due volte.
+    // conterebbe due volte. "credito_primo_mese" è la parte del primo ciclo
+    // che il fornitore non ha addebitato (Subscription.firstCycleCredit),
+    // spesa su un ciclo successivo: stessa regola, non è un incasso.
     kind: { type: String, enum: PAYMENT_KINDS, required: true, default: "incasso" },
     // Periodo coperto dal pagamento, derivato da paidAt: ricalcolato anche
     // quando una correzione sposta la data, non solo alla registrazione.

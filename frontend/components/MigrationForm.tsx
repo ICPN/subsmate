@@ -41,6 +41,8 @@ interface MigrationFormProps {
   /** ISO, o null se l'abbonamento non ha ancora una scadenza. */
   oldNextDueDate: string | null;
   oldPaidForCurrentCycle: number;
+  /** Credito del primo mese ancora disponibile: passa sempre alla destinazione. */
+  firstCycleCredit: number;
   onSuccess?: (message: string) => void;
 }
 
@@ -52,6 +54,7 @@ export function MigrationForm({
   oldMonthlyRate,
   oldNextDueDate,
   oldPaidForCurrentCycle,
+  firstCycleCredit,
   onSuccess,
 }: MigrationFormProps) {
   const router = useRouter();
@@ -82,6 +85,7 @@ export function MigrationForm({
         newPeriodicity: toPeriodicity,
         // Il supplemento segue il servizio: chi non dona resta a zero.
         newDonationSupplement: donationSupplement > 0 ? target.donationSupplement : 0,
+        firstCycleCredit,
       })
     : null;
 
@@ -174,7 +178,8 @@ export function MigrationForm({
                 <tr>
                   <td className="py-0.5 text-[var(--ink-muted)]">
                     Credito da spendere ({balance.creditMonths}{" "}
-                    {balance.creditMonths === 1 ? "mese" : "mesi"})
+                    {balance.creditMonths === 1 ? "mese" : "mesi"}
+                    {balance.firstCycleCredit > 0 ? " e credito primo mese" : ""})
                   </td>
                   <td className="py-0.5 text-right tnum">{formatEUR(balance.creditAmount)}</td>
                 </tr>
@@ -185,6 +190,14 @@ export function MigrationForm({
                     Mesi coperti dal credito ({balance.convertedMonths})
                   </td>
                   <td className="py-0.5 text-right tnum">{formatEUR(balance.convertedAmount)}</td>
+                </tr>
+              ) : null}
+              {!balance.cycleFullyCovered && balance.firstCycleCredit > 0 ? (
+                <tr>
+                  <td className="py-0.5 text-[var(--ink-muted)]">Credito primo mese</td>
+                  <td className="py-0.5 text-right tnum">
+                    {formatEUR(-balance.firstCycleCredit)}
+                  </td>
                 </tr>
               ) : null}
               {!balance.cycleFullyCovered ? (

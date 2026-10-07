@@ -44,6 +44,8 @@ export interface PaymentSubscriptionOption {
   /** Quanto manca ancora per il ciclo in corso, se già pagato in parte. */
   outstanding: number;
   donationSupplement: number;
+  /** Credito del primo mese ancora da spendere. */
+  firstCycleCredit: number;
 }
 
 /** Pagamento da correggere, nei campi che il form sa modificare. */
@@ -65,6 +67,7 @@ export function RegisterPaymentForm({
   defaultAmount = 0,
   defaultDonation = 0,
   defaultOutstanding = 0,
+  defaultCredit = 0,
   onSuccess,
 }: {
   subscriptionId?: string;
@@ -74,6 +77,8 @@ export function RegisterPaymentForm({
   defaultAmount?: number;
   defaultDonation?: number;
   defaultOutstanding?: number;
+  /** Credito del primo mese disponibile sull'abbonamento già noto. */
+  defaultCredit?: number;
   onSuccess?: (message: string) => void;
 }) {
   const router = useRouter();
@@ -94,11 +99,21 @@ export function RegisterPaymentForm({
     : defaultDonation;
   // Se il ciclo è già pagato in parte, il residuo è il suggerimento utile.
   const suggestedAmount = outstanding > 0 ? outstanding : expected;
+  // Il credito del primo mese si propone tutto, fino al dovuto: l'admin può
+  // ridurlo o metterlo a zero per tenerlo alla volta dopo. In modifica no:
+  // il credito è una riga a parte, non un attributo dell'incasso.
+  const creditAvailable = editing
+    ? 0
+    : chooseSubscription
+      ? (current?.firstCycleCredit ?? 0)
+      : defaultCredit;
+  const creditSuggested = Math.min(creditAvailable, suggestedAmount);
 
   // In modifica si parte dai valori registrati, non dal suggerimento: l'importo
   // incassato è un fatto, la quota dovuta solo un'ipotesi di partenza.
+  const [credit, setCredit] = useState(String(creditSuggested || ""));
   const [amount, setAmount] = useState(
-    payment ? String(payment.amount) : String(suggestedAmount || "")
+    payment ? String(payment.amount) : String(round2(suggestedAmount - creditSuggested) || "")
   );
   const [donation, setDonation] = useState(
     payment ? String(payment.donationAmount || "") : String(donationSuggested || "")
@@ -111,16 +126,18 @@ export function RegisterPaymentForm({
     setSelected(id);
     const next = subscriptions?.find((option) => option._id === id);
     if (!next) return;
-    if (!amountEdited) {
-      setAmount(String(next.outstanding > 0 ? next.outstanding : next.totalDue));
-    }
+    const nextSuggested = next.outstanding > 0 ? next.outstanding : next.totalDue;
+    const nextCredit = Math.min(next.firstCycleCredit, nextSuggested);
+    setCredit(String(nextCredit || ""));
+    if (!amountEdited) setAmount(String(round2(nextSuggested - nextCredit)));
     if (!donationEdited) setDonation(String(next.donationSupplement || ""));
   }
 
-  const entered = Number(amount);
+  const creditUsed = Number(credit || 0);
+  const entered = Number(amount) + (Number.isFinite(creditUsed) ? creditUsed : 0);
   const missing =
     Number.isFinite(entered) && entered > 0 && suggestedAmount > 0
-      ? Math.round((suggestedAmount - entered) * 100) / 100
+      ? round2(suggestedAmount - entered)
       : 0;
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -145,6 +162,7 @@ export function RegisterPaymentForm({
         method: String(form.get("method")),
         reference: String(form.get("reference") ?? ""),
         notes: String(form.get("notes") ?? ""),
+        ...(editing ? {} : { firstCycleCredit: creditUsed }),
       },
       payment ? "Modifica non riuscita. Riprova." : "Registrazione non riuscita. Riprova."
     );
@@ -219,6 +237,29 @@ export function RegisterPaymentForm({
           />
         </Field>
 
+        {creditAvailable > 0 ? (
+          <Field
+            label="Credito primo mese da usare"
+            hint={`Disponibili ${formatEUR(creditAvailable)}. Metti 0 per tenerlo per la prossima volta.`}
+          >
+            <TextInput
+              type="number"
+              name="firstCycleCredit"
+              step="0.01"
+              min="0"
+              max={creditAvailable}
+              value={credit}
+              onChange={(event) => {
+                setCredit(event.target.value);
+                // L'importo segue il credito finché l'admin non lo ha scritto lui.
+                if (!amountEdited) {
+                  setAmount(String(round2(suggestedAmount - Number(event.target.value || 0))));
+                }
+              }}
+            />
+          </Field>
+        ) : null}
+
         <Field label="Data del pagamento">
           <TextInput
             type="date"
@@ -273,4 +314,8 @@ export function RegisterPaymentForm({
       </button>
     </form>
   );
+}
+
+function round2(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
 }

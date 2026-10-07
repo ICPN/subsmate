@@ -54,6 +54,16 @@ async function handlePATCH(request: Request, { params }: Context) {
       );
     }
 
+    // Il credito del primo mese è ancorato al ciclo come quello di migrazione:
+    // cambiarne la data lo staccherebbe. Si cancella e si riusa al pagamento
+    // dopo, e cancellato torna disponibile da solo, perché è calcolato.
+    if (payment.kind === "credito_primo_mese") {
+      return fail(
+        "Un credito del primo mese non si modifica: eliminalo e usalo di nuovo registrando un pagamento.",
+        409
+      );
+    }
+
     const previousPaidAt = new Date(payment.paidAt);
     const nextPaidAt = data.paidAt ?? previousPaidAt;
     const dateChanged = nextPaidAt.getTime() !== previousPaidAt.getTime();

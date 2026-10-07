@@ -11,7 +11,14 @@ import { Card, TableWrap, Th, SortableTh, Td, EmptyState, ServiceMark } from "@/
 import { parseSort, sortRows, sortHrefBuilder, type SortValue } from "@/lib/sorting";
 import { RegisterPaymentForm } from "@/components/RegisterPaymentForm";
 import { PaymentRowActions } from "@/components/PaymentRowActions";
-import { formatEUR, formatDate, statusDetail, toDateInputValue } from "@/lib/billing";
+import {
+  CREDIT_KIND_LABELS,
+  formatEUR,
+  formatDate,
+  isCreditKind,
+  statusDetail,
+  toDateInputValue,
+} from "@/lib/billing";
 
 export const dynamic = "force-dynamic";
 
@@ -99,6 +106,7 @@ export default async function SubscriptionDetailPage({
                 serviceLabel: sub.service?.name ?? "Servizio rimosso",
                 periodicity: sub.periodicity,
                 donationSupplement: sub.donationSupplement,
+                firstCycleProviderCharge: sub.firstCycleProviderCharge,
                 onboardingStatus: sub.onboardingStatus,
                 startDate: toDateInputValue(sub.startDate),
                 notes: sub.notes ?? "",
@@ -116,6 +124,7 @@ export default async function SubscriptionDetailPage({
                 oldMonthlyRate={sub.service?.monthlyRate ?? 0}
                 oldNextDueDate={sub.computed.nextDueDate?.toISOString() ?? null}
                 oldPaidForCurrentCycle={sub.computed.paidForCurrentCycle}
+                firstCycleCredit={sub.firstCycleCreditAvailable}
               />
             )}
           </div>
@@ -150,6 +159,11 @@ export default async function SubscriptionDetailPage({
               {formatEUR(sub.computed.outstanding)}
             </span>
           ) : null}
+          {sub.firstCycleCreditAvailable > 0 ? (
+            <span className="tnum mt-1 block text-xs text-[var(--ink-muted)]">
+              Credito primo mese da usare {formatEUR(sub.firstCycleCreditAvailable)}
+            </span>
+          ) : null}
         </DetailTile>
         <DetailTile label="Prossima scadenza">
           <span className="tnum">{formatDate(sub.computed.nextDueDate)}</span>
@@ -167,6 +181,7 @@ export default async function SubscriptionDetailPage({
             defaultAmount={sub.computed.totalDue}
             defaultDonation={sub.computed.donationSupplement}
             defaultOutstanding={sub.computed.outstanding}
+            defaultCredit={sub.firstCycleCreditAvailable}
           />
         </Card>
 
@@ -236,8 +251,8 @@ export default async function SubscriptionDetailPage({
                         {payment.donationAmount ? formatEUR(payment.donationAmount) : "—"}
                       </Td>
                       <Td label="Metodo">
-                        {payment.kind === "credito_migrazione" ? (
-                          <Pill>Credito migrazione</Pill>
+                        {isCreditKind(payment.kind) ? (
+                          <Pill>{CREDIT_KIND_LABELS[payment.kind]}</Pill>
                         ) : (
                           <Pill>{payment.method}</Pill>
                         )}
@@ -252,6 +267,7 @@ export default async function SubscriptionDetailPage({
                           <span className="text-xs text-[var(--ink-muted)]">—</span>
                         ) : (
                           <PaymentRowActions
+                          canEdit={payment.kind !== "credito_primo_mese"}
                           subscriptionId={String(sub._id)}
                           payment={{
                             _id: String(payment._id),

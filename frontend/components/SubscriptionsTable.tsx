@@ -229,6 +229,7 @@ export function SubscriptionsTable({
                         serviceLabel: sub.service?.name ?? "Servizio rimosso",
                         periodicity: sub.periodicity,
                         donationSupplement: sub.donationSupplement,
+                        firstCycleProviderCharge: sub.firstCycleProviderCharge,
                         onboardingStatus: sub.onboardingStatus,
                         startDate: toDateInputValue(sub.startDate),
                         notes: sub.notes ?? "",

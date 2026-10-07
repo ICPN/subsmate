@@ -33,7 +33,9 @@ export function Header() {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuId = useId();
 
-  const current = LINKS.find((link) => isActive(link.href, pathname))?.label ?? "Menu";
+  const current =
+    LINKS.find((link) => isActive(link.href, pathname))?.label ??
+    (pathname.startsWith("/profilo") ? "Profilo" : "Menu");
 
   // Il menu si chiude toccando fuori o con Esc; con Esc il focus torna al
   // bottone, così chi usa la tastiera non lo perde in fondo alla pagina.
@@ -93,6 +95,16 @@ export function Header() {
             })}
           </ul>
         </nav>
+
+        <Link
+          href="/profilo"
+          aria-current={pathname.startsWith("/profilo") ? "page" : undefined}
+          className={`hidden py-3 text-xs transition-colors hover:text-white md:block ${
+            pathname.startsWith("/profilo") ? "text-white" : "text-white/60"
+          }`}
+        >
+          Profilo
+        </Link>
 
         <button
           type="button"
@@ -156,6 +168,13 @@ export function Header() {
             })}
           </ul>
           <div className="mx-auto max-w-7xl border-t border-white/10 px-1 py-2 sm:px-3">
+            <Link
+              href="/profilo"
+              onClick={() => setOpen(false)}
+              className="block rounded-[var(--radius)] px-3 py-3 text-sm text-white/70 transition-colors hover:bg-white/5 hover:text-white"
+            >
+              Profilo
+            </Link>
             <button
               type="button"
               onClick={logout}

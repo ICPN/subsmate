@@ -16,7 +16,7 @@ import { PAGE_SIZES, parsePagination, paginate, pageHrefBuilder } from "@/lib/pa
 import Link from "next/link";
 import { Pill } from "@/components/StatusBadge";
 import { NewPaymentButton, PaymentRowActions } from "@/components/PaymentRowActions";
-import { formatEUR, formatDate } from "@/lib/billing";
+import { CREDIT_KIND_LABELS, formatEUR, formatDate, isCreditKind } from "@/lib/billing";
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +51,7 @@ export default async function PaymentsPage({
       totalDue: sub.computed.totalDue,
       outstanding: sub.computed.outstanding,
       donationSupplement: sub.donationSupplement,
+      firstCycleCredit: sub.firstCycleCreditAvailable,
     }))
     .sort((a, b) => a.personName.localeCompare(b.personName, "it"));
 
@@ -91,9 +92,9 @@ export default async function PaymentsPage({
 
   // Totali su tutto lo storico, non sulla pagina mostrata: le etichette
   // dicono "registrati" e "totale incassato", e devono valere per l'archivio.
-  // Come in dashboard: i crediti di migrazione non sono denaro incassato.
+  // Come in dashboard: i crediti (migrazione, primo mese) non sono denaro incassato.
   // Il contatore delle righe resta su tutto, perché nell'elenco si vedono.
-  const incassi = allPayments.filter((payment) => payment.kind !== "credito_migrazione");
+  const incassi = allPayments.filter((payment) => !isCreditKind(payment.kind));
   const collected = incassi.reduce((sum, payment) => sum + payment.amount, 0);
   const donations = incassi.reduce((sum, payment) => sum + (payment.donationAmount ?? 0), 0);
 
@@ -202,8 +203,8 @@ export default async function PaymentsPage({
                         {payment.donationAmount ? formatEUR(payment.donationAmount) : "—"}
                       </Td>
                       <Td label="Metodo">
-                        {payment.kind === "credito_migrazione" ? (
-                          <Pill>Credito migrazione</Pill>
+                        {isCreditKind(payment.kind) ? (
+                          <Pill>{CREDIT_KIND_LABELS[payment.kind]}</Pill>
                         ) : (
                           <Pill>{payment.method}</Pill>
                         )}
@@ -214,6 +215,7 @@ export default async function PaymentsPage({
                       <Td label="Riferimento" className="text-[var(--ink-muted)]">{payment.reference || "—"}</Td>
                       <Td align="right">
                         <PaymentRowActions
+                          canEdit={payment.kind !== "credito_primo_mese"}
                           subscriptionId={String(payment.subscription)}
                           payment={{
                             _id: String(payment._id),

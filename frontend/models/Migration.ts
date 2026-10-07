@@ -55,6 +55,10 @@ const MigrationSchema = new Schema(
      * i dati da cui derivava cambiano appena il vecchio abbonamento cessa.
      */
     creditAmount: { type: Number, min: 0, default: null },
+    // Parte di creditAmount che viene dal credito del primo mese del vecchio
+    // abbonamento. Serve a quel credito per risultare speso: senza, chi torna
+    // sul vecchio servizio lo ritroverebbe disponibile e lo userebbe due volte.
+    firstCycleCreditTransferred: { type: Number, min: 0, default: 0 },
     notes: { type: String, trim: true, default: "" },
   },
   { timestamps: true }

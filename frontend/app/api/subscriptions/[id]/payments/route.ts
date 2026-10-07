@@ -7,11 +7,13 @@ import {
   PERIOD_MONTHS,
   addMonths,
   coveredPeriod,
+  formatEUR,
   nextDueDate,
   paidForCycle,
   totalDue,
 } from "@/lib/billing";
 import { withAdmin } from "@/lib/requireAdmin";
+import { getFirstCycleCreditAvailable } from "@/lib/queries";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -51,6 +53,19 @@ async function handlePOST(request: Request, { params }: Context) {
       )
       .lean();
     if (!subscription) return fail("Abbonamento non trovato", 404);
+
+    // Il credito del primo mese si spende solo per quanto ne resta: lo
+    // decide il server, il form lo propone soltanto.
+    const creditToUse = data.firstCycleCredit ?? 0;
+    if (creditToUse > 0) {
+      const available = await getFirstCycleCreditAvailable(id);
+      if (creditToUse > available + 0.004) {
+        return fail(
+          `Il credito del primo mese disponibile è ${formatEUR(available)}: non se ne può usare di più.`,
+          409
+        );
+      }
+    }
 
     const monthlyRate = subscription.service?.monthlyRate ?? 0;
     const paidAt = data.paidAt ?? new Date();
@@ -121,6 +136,23 @@ async function handlePOST(request: Request, { params }: Context) {
       reference: data.reference ?? "",
       notes: data.notes ?? "",
     });
+
+    // Stesso periodo dell'incasso: paidForCycle li somma sullo stesso ciclo,
+    // e il ciclo si chiude con incasso + credito.
+    if (creditToUse > 0) {
+      await Payment.create({
+        subscription: id,
+        person: subscription.person,
+        amount: creditToUse,
+        donationAmount: 0,
+        paidAt,
+        method: "altro",
+        kind: "credito_primo_mese",
+        periodStart,
+        periodEnd,
+        notes: "Credito del primo mese non addebitato dal fornitore",
+      });
+    }
 
     // Avanza lastPaymentDate solo se il pagamento è più recente di quello registrato:
     // permette di inserire pagamenti arretrati senza falsare la prossima scadenza.

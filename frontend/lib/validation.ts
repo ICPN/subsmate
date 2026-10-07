@@ -42,12 +42,17 @@ export const subscriptionCreateSchema = z.object({
   lastPaymentDate: optionalDate,
   notes: z.string().optional(),
 });
-export const subscriptionUpdateSchema = subscriptionCreateSchema.partial();
+export const subscriptionUpdateSchema = subscriptionCreateSchema.partial().extend({
+  // Solo in modifica: si conosce dopo la fattura del fornitore. Null lo toglie.
+  firstCycleProviderCharge: z.number().min(0).nullable().optional(),
+});
 
 export const paymentCreateSchema = z.object({
   subscription: objectId,
   amount: z.coerce.number().min(0).optional(), // se assente si usa il totale dovuto calcolato
   donationAmount: z.coerce.number().min(0).optional(),
+  // Credito del primo mese da spendere su questo ciclo, oltre all'importo.
+  firstCycleCredit: z.coerce.number().min(0).optional(),
   paidAt: z.coerce.date().optional(),
   method: z.enum(PAYMENT_METHODS).optional(),
   reference: z.string().optional(),

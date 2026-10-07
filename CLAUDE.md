@@ -88,8 +88,8 @@ ricostruire poi il conto. Spec:
 - **Il credito è un `Payment` con `kind: "credito_migrazione"`**, non un campo: così
   `outstanding` scende via `paidForCycle` senza toccare il motore di calcolo. Quindi **va
   escluso da ogni aggregato di denaro**, o conta due volte un incasso mai avvenuto — con
-  `$ne: "credito_migrazione"`, non `$eq: "incasso"`: i pagamenti anteriori al campo non lo
-  hanno in documento.
+  `CREDIT_KINDS` / `isCreditKind` di `lib/billing.ts` (`$nin` in Mongo), non `$eq:
+  "incasso"`: i pagamenti anteriori al campo non lo hanno in documento.
 - **Si spende ciclo per ciclo**, un versamento ciascuno: cambiando periodicità può valerne
   più di uno, e `paidForCycle` guarda un solo `periodEnd`.
 - **Un ciclo chiuso dal credito fa avanzare `lastPaymentDate`** fino all'inizio
@@ -102,6 +102,25 @@ ricostruire poi il conto. Spec:
 - **Un abbonamento cessato sulla destinazione si riusa**, non si duplica: l'indice unico
   persona × servizio copre anche i cessati, quindi rifiutare bloccherebbe chi torna
   indietro.
+
+## Credito del primo mese
+
+ChatGPT, aggiungendo un posto a metà ciclo, addebita solo i giorni fino al rinnovo; la
+persona versa comunque il mese pieno. L'admin inserisce a posteriori l'addebito del
+fornitore sull'abbonamento (`firstCycleProviderCharge`), e la differenza dalla tariffa è un
+credito della persona. Nessun riferimento a ChatGPT nel codice: vale per ogni servizio.
+
+- **Il credito è fissato all'inserimento** (`firstCycleCredit` = tariffa di allora −
+  addebito, donazione esclusa) e non segue i cambi di tariffa. La PATCH lo ricalcola solo
+  se l'addebito cambia davvero: il modulo lo reinvia a ogni salvataggio.
+- **Il disponibile si calcola**: credito − righe `credito_primo_mese` −
+  `Migration.firstCycleCreditTransferred` delle migrazioni eseguite.
+- **Si spende registrando un pagamento**, come riga `credito_primo_mese` con lo stesso
+  periodo dell'incasso, non agganciata in anticipo: un pagamento in ritardo sposta il
+  ciclo e lascerebbe il credito su quello sbagliato. Si cancella (torna disponibile), non
+  si modifica.
+- **Passa sempre in una migrazione**, anche con `a_scadenza`, sommato al credito dei mesi
+  e fuori dal tetto «mai più dell'incassato»: è denaro già versato.
 
 ## Modello dati
 
@@ -133,6 +152,11 @@ del token). Da Edge non si interroga Mongo, quindi il middleware da solo non bas
   password cambiata).
 - Account solo con `python execution/seed_admin.py`: niente registrazione, inviti o reset
   self-service. È una scelta, spec in `docs/superpowers/specs/`.
+- Da `/profilo` (`PATCH /api/account`) l'admin cambia **solo** la propria email e password,
+  sempre con la password attuale: l'id viene dalla sessione, mai dal corpo. Gli errori
+  contano nel blocco del login (`registerFailedAttempt` in `lib/auth.ts`, unico punto per
+  hash e blocco). Cambiare password riemette il cookie della sessione corrente, le altre si
+  chiudono via `passwordChangedAt`.
 
 Le due verifiche, nessuna deve stampare nulla:
 

@@ -67,9 +67,12 @@ export function NewPaymentButton({
 export function PaymentRowActions({
   subscriptionId,
   payment,
+  canEdit = true,
 }: {
   subscriptionId: string;
   payment: EditablePayment;
+  /** Falso per il credito del primo mese: si cancella, non si corregge. */
+  canEdit?: boolean;
 }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -95,13 +98,15 @@ export function PaymentRowActions({
   return (
     <>
       <span className="inline-flex gap-2">
-        <button
-          type="button"
-          onClick={() => setEditOpen(true)}
-          className={`${buttonSecondary} px-2.5 py-1 text-xs`}
-        >
-          Modifica
-        </button>
+        {canEdit ? (
+          <button
+            type="button"
+            onClick={() => setEditOpen(true)}
+            className={`${buttonSecondary} px-2.5 py-1 text-xs`}
+          >
+            Modifica
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={() => setConfirmOpen(true)}

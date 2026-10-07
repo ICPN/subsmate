@@ -1,10 +1,16 @@
+import type { Types } from "mongoose";
 import { connectToDatabase } from "@/lib/mongodb";
 import { Subscription } from "@/models/Subscription";
 import { Payment } from "@/models/Payment";
 import { Person } from "@/models/Person";
 import { Service } from "@/models/Service";
 import { Migration } from "@/models/Migration";
-import { computeSubscription, type SubscriptionComputation } from "@/lib/billing";
+import {
+  CREDIT_KINDS,
+  availableFirstCycleCredit,
+  computeSubscription,
+  type SubscriptionComputation,
+} from "@/lib/billing";
 import {
   migrationAlert,
   migrationBalance,
@@ -59,6 +65,10 @@ export interface SubscriptionView {
   onboardingStatus: OnboardingStatus;
   startDate: Date | null;
   lastPaymentDate: Date | null;
+  /** Addebito del fornitore per il primo mese, se inserito. */
+  firstCycleProviderCharge: number | null;
+  /** Credito del primo mese ancora da spendere: calcolato, mai salvato. */
+  firstCycleCreditAvailable: number;
   notes: string;
   computed: SubscriptionComputation;
   /** Migrazione pianificata o appena eseguita che riguarda questo abbonamento. */
@@ -88,10 +98,15 @@ export async function listSubscriptions(
   >();
   const payments = await Payment.find(
     { subscription: { $in: subscriptions.map((sub) => sub._id) } },
-    { subscription: 1, amount: 1, paidAt: 1, periodEnd: 1 }
+    { subscription: 1, amount: 1, paidAt: 1, periodEnd: 1, kind: 1 }
   ).lean();
+  // Credito del primo mese già speso, per abbonamento.
+  const firstCycleUsed = new Map<string, number[]>();
   for (const payment of payments) {
     const key = String(payment.subscription);
+    if (payment.kind === "credito_primo_mese") {
+      firstCycleUsed.set(key, [...(firstCycleUsed.get(key) ?? []), payment.amount]);
+    }
     const list = paymentsBySubscription.get(key) ?? [];
     list.push({
       amount: payment.amount,
@@ -115,6 +130,14 @@ export async function listSubscriptions(
   const migrationsBySubscription = new Map<string, (typeof migrations)[number]>();
   for (const migration of migrations) {
     const key = String(migration.fromSubscription);
+    // Il credito del primo mese portato via da una migrazione eseguita conta
+    // come speso: tutte le migrazioni, non solo la più recente.
+    if (migration.status === "eseguita" && migration.firstCycleCreditTransferred) {
+      firstCycleUsed.set(key, [
+        ...(firstCycleUsed.get(key) ?? []),
+        migration.firstCycleCreditTransferred,
+      ]);
+    }
     // La più recente vince: le precedenti sono storia già chiusa.
     if (!migrationsBySubscription.has(key)) migrationsBySubscription.set(key, migration);
   }
@@ -134,6 +157,11 @@ export async function listSubscriptions(
         payments: paymentsBySubscription.get(String(sub._id)) ?? [],
       },
       now
+    );
+
+    const firstCycleCreditAvailable = availableFirstCycleCredit(
+      sub.firstCycleCredit,
+      firstCycleUsed.get(String(sub._id)) ?? []
     );
 
     const raw = migrationsBySubscription.get(String(sub._id));
@@ -184,6 +212,7 @@ export async function listSubscriptions(
                   // servizio di destinazione, che è diverso da quello attuale.
                   newDonationSupplement:
                     sub.donationSupplement > 0 ? (toService.donationSupplement ?? 0) : 0,
+                  firstCycleCredit: firstCycleCreditAvailable,
                 })
               : null,
         }
@@ -202,10 +231,33 @@ export async function listSubscriptions(
       service: service
         ? { ...service, _id: String(service._id), logo: serviceLogoFor(service.slug) }
         : null,
+      firstCycleProviderCharge: sub.firstCycleProviderCharge ?? null,
+      firstCycleCreditAvailable,
       computed,
       migration,
     };
   });
+}
+
+/**
+ * Credito del primo mese ancora disponibile su un abbonamento, per le rotte
+ * che scrivono (registrazione pagamento, esecuzione migrazione). Stessa regola
+ * di `listSubscriptions`, che però lo calcola in blocco per tutte le righe.
+ */
+export async function getFirstCycleCreditAvailable(subscriptionId: string | Types.ObjectId): Promise<number> {
+  await connectToDatabase();
+  const [subscription, spent, migrations] = await Promise.all([
+    Subscription.findById(subscriptionId, { firstCycleCredit: 1 }).lean(),
+    Payment.find({ subscription: subscriptionId, kind: "credito_primo_mese" }, { amount: 1 }).lean(),
+    Migration.find(
+      { fromSubscription: subscriptionId, status: "eseguita" },
+      { firstCycleCreditTransferred: 1 }
+    ).lean(),
+  ]);
+  return availableFirstCycleCredit(subscription?.firstCycleCredit, [
+    ...spent.map((payment) => payment.amount),
+    ...migrations.map((migration) => migration.firstCycleCreditTransferred ?? 0),
+  ]);
 }
 
 /**
@@ -274,13 +326,13 @@ export async function getDashboardData() {
   const dueSoon = subscriptions.filter((s) => s.computed.status === "in_scadenza");
   const toActivate = subscriptions.filter((s) => s.computed.status === "da_attivare");
 
-  // Il credito di migrazione è denaro già contato sul vecchio abbonamento:
-  // chiude il ciclo del nuovo ma non è un incasso, e sommarlo qui lo
-  // conterebbe due volte. `$ne` e non `$eq: "incasso"` perché i pagamenti
-  // scritti prima di questo campo non hanno `kind` in documento: il default
-  // di Mongoose vale alla scrittura, non retroattivamente.
+  // I crediti (migrazione, primo mese) sono denaro già contato altrove:
+  // chiudono un ciclo ma non sono un incasso, e sommarli qui li conterebbe
+  // due volte. `$nin` e non `$eq: "incasso"` perché i pagamenti scritti
+  // prima di questo campo non hanno `kind` in documento: il default di
+  // Mongoose vale alla scrittura, non retroattivamente.
   const [donations] = await Payment.aggregate([
-    { $match: { kind: { $ne: "credito_migrazione" } } },
+    { $match: { kind: { $nin: CREDIT_KINDS } } },
     { $group: { _id: null, total: { $sum: "$donationAmount" }, collected: { $sum: "$amount" } } },
   ]);
 

@@ -88,10 +88,18 @@ export interface MigrationBalanceInput {
    * ChatGPT hanno importi diversi.
    */
   newDonationSupplement?: number;
+  /**
+   * Credito del primo mese ancora disponibile sul vecchio abbonamento. Passa
+   * sempre alla destinazione, anche con `a_scadenza`: è denaro versato e mai
+   * addebitato dal fornitore, e la persona lo ha comunque.
+   */
+  firstCycleCredit?: number;
 }
 
 export interface MigrationBalance {
   creditMonths: number;
+  /** Parte di creditAmount che viene dal credito del primo mese. */
+  firstCycleCredit: number;
   /** Valore di un mese di credito: quota del servizio + quota di donazione. */
   creditMonthlyRate: number;
   /** Credito riconosciuto, mai superiore a quanto incassato. */
@@ -123,7 +131,8 @@ export interface MigrationBalance {
  *
  * Il credito è il minore fra i mesi residui valorizzati alla tariffa del
  * vecchio servizio e quanto è stato davvero incassato per quel ciclo: si
- * sconta ciò che è entrato, mai di più.
+ * sconta ciò che è entrato, mai di più. A questo si somma il credito del primo
+ * mese ancora disponibile.
  *
  * La scomposizione non è un secondo calcolo che potrebbe divergere dal
  * totale: `convertedAmount` è definito come il resto, quindi le tre voci
@@ -141,9 +150,14 @@ export function migrationBalance(input: MigrationBalanceInput): MigrationBalance
   const creditMonthlyRate = round2(
     input.oldMonthlyRate + oldDonation / PERIOD_MONTHS[input.oldPeriodicity]
   );
-  const creditAmount = round2(
+  const monthsCredit = round2(
     Math.min(months * creditMonthlyRate, Math.max(0, input.oldPaidForCurrentCycle))
   );
+  // Il tetto «mai più di quanto incassato» vale per i mesi residui del ciclo
+  // corrente. Il credito del primo mese è già denaro incassato in un ciclo
+  // precedente: si somma per intero.
+  const firstCycle = round2(Math.max(0, input.firstCycleCredit ?? 0));
+  const creditAmount = round2(monthsCredit + firstCycle);
 
   const cycleMonths = PERIOD_MONTHS[input.newPeriodicity];
   const quota = serviceQuota(input.newMonthlyRate, input.newPeriodicity);
@@ -166,12 +180,15 @@ export function migrationBalance(input: MigrationBalanceInput): MigrationBalance
   const convertedMonths = cycleFullyCovered ? cycleMonths : Math.min(months, cycleMonths);
   const remainingMonths = cycleFullyCovered ? 0 : cycleMonths - convertedMonths;
   const remainingAmount = round2(remainingMonths * input.newMonthlyRate);
+  // Il credito del primo mese ha una riga sua nella scomposizione: qui resta
+  // fuori, altrimenti senza mesi residui finirebbe in una riga nascosta.
   const convertedAmount = cycleFullyCovered
     ? 0
-    : round2(quota - remainingAmount - creditAmount);
+    : round2(quota - remainingAmount - monthsCredit);
 
   return {
     creditMonths: months,
+    firstCycleCredit: firstCycle,
     creditMonthlyRate,
     creditAmount,
     newTotal,

@@ -17,7 +17,13 @@ import {
 import { MigrationBadge } from "@/components/MigrationBadge";
 import { parseSort, sortRows, sortHrefBuilder, type SortValue } from "@/lib/sorting";
 import type { SubscriptionView } from "@/lib/queries";
-import { formatEUR, formatDate, statusDetail } from "@/lib/billing";
+import {
+  CREDIT_KIND_LABELS,
+  formatEUR,
+  formatDate,
+  isCreditKind,
+  statusDetail,
+} from "@/lib/billing";
 
 // I dati cambiano a ogni pagamento registrato: nessuna cache statica.
 export const dynamic = "force-dynamic";
@@ -215,8 +221,8 @@ export default async function DashboardPage({
                           {formatEUR(payment.amount)}
                         </Td>
                         <Td label="Tipo">
-                          {payment.kind === "credito_migrazione" ? (
-                            <Pill>Credito migrazione</Pill>
+                          {isCreditKind(payment.kind) ? (
+                            <Pill>{CREDIT_KIND_LABELS[payment.kind]}</Pill>
                           ) : (
                             <Pill>{payment.method}</Pill>
                           )}

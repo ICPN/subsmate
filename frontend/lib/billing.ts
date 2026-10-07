@@ -1,4 +1,5 @@
 import type { Periodicity, OnboardingStatus } from "@/models/Subscription";
+import type { PaymentKind } from "@/models/Payment";
 
 /**
  * Motore di calcolo di SubsMate.
@@ -230,6 +231,47 @@ export function coveredPeriod(
       billingDayOfMonth
     ),
   };
+}
+
+/**
+ * Tipi di pagamento che chiudono un ciclo senza essere denaro entrato in quel
+ * momento: vanno esclusi da ogni aggregato di denaro, o conterebbero due volte
+ * un incasso già registrato altrove. Nelle query Mongo con `$nin`, non
+ * `$eq: "incasso"`: i pagamenti anteriori al campo non hanno `kind` in
+ * documento. Sta qui e non in models/Payment.ts perché la usano anche i Client
+ * Component, che non devono importare mongoose.
+ */
+export const CREDIT_KINDS: PaymentKind[] = ["credito_migrazione", "credito_primo_mese"];
+
+export const CREDIT_KIND_LABELS: Record<string, string> = {
+  credito_migrazione: "Credito migrazione",
+  credito_primo_mese: "Credito primo mese",
+};
+
+export function isCreditKind(kind: string | null | undefined): boolean {
+  return CREDIT_KINDS.includes(kind as PaymentKind);
+}
+
+/**
+ * Credito del primo mese: alcuni fornitori (ChatGPT) addebitano solo i giorni
+ * fra l'aggiunta del posto e il rinnovo, mentre la persona versa il mese pieno.
+ * La differenza è sua. La donazione resta fuori: è versata e non consumata
+ * indipendentemente da quanto addebita il fornitore.
+ */
+export function firstCycleCredit(monthlyRate: number, providerCharge: number): number {
+  return round2(Math.max(0, monthlyRate - providerCharge));
+}
+
+/**
+ * Quanto resta del credito del primo mese, tolti i versamenti
+ * "credito_primo_mese" già spesi e quello trasferito da migrazioni eseguite.
+ */
+export function availableFirstCycleCredit(
+  credit: number | null | undefined,
+  used: number[]
+): number {
+  const spent = used.reduce((sum, amount) => sum + amount, 0);
+  return round2(Math.max(0, (credit ?? 0) - spent));
 }
 
 function round2(value: number): number {

@@ -26,6 +26,8 @@ export interface SubscriptionFormValues {
   donationSupplement: number;
   onboardingStatus: string;
   startDate: string; // "yyyy-mm-dd" oppure ""
+  /** Addebito del fornitore per il primo mese: solo in modifica. */
+  firstCycleProviderCharge?: number | null;
   notes: string;
 }
 
@@ -83,7 +85,10 @@ export function SubscriptionForm({
       startDate: startDate || null,
       notes: String(form.get("notes") ?? ""),
     };
-    if (!isEdit) {
+    if (isEdit) {
+      const charge = String(form.get("firstCycleProviderCharge") ?? "");
+      payload.firstCycleProviderCharge = charge === "" ? null : Number(charge);
+    } else {
       payload.person = String(form.get("person"));
       payload.service = String(form.get("service"));
     }
@@ -188,6 +193,22 @@ export function SubscriptionForm({
         <Field label="Data inizio">
           <TextInput type="date" name="startDate" defaultValue={initialValues?.startDate ?? ""} />
         </Field>
+
+        {/* Si conosce solo dopo la fattura del fornitore, quindi a posteriori. */}
+        {isEdit ? (
+          <Field
+            label="Addebito del fornitore per il primo mese (€)"
+            hint="Solo se il fornitore ha addebitato il primo mese in proporzione ai giorni. La differenza dalla tariffa diventa credito della persona."
+          >
+            <TextInput
+              type="number"
+              step="0.01"
+              min={0}
+              name="firstCycleProviderCharge"
+              defaultValue={initialValues?.firstCycleProviderCharge ?? ""}
+            />
+          </Field>
+        ) : null}
 
         <Field label="Note">
           <Textarea name="notes" defaultValue={initialValues?.notes} />

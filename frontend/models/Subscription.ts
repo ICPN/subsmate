@@ -28,6 +28,16 @@ const SubscriptionSchema = new Schema(
     startDate: { type: Date, default: null },
     // Aggiornata dalla registrazione di un pagamento; base per la prossima scadenza.
     lastPaymentDate: { type: Date, default: null },
+    // Quanto il fornitore ha addebitato per il primo mese, quando lo fa in
+    // proporzione ai giorni (ChatGPT, aggiungendo un posto a metà ciclo). Lo
+    // inserisce l'admin a posteriori, dopo averlo verificato sulla fattura.
+    firstCycleProviderCharge: { type: Number, min: 0, default: null },
+    // Credito della persona: tariffa mensile al momento dell'inserimento meno
+    // l'addebito qui sopra. Salvato e non derivato perché la tariffa può
+    // cambiare, e il credito resta quello che la persona ha versato allora. Il
+    // disponibile (meno quanto già speso o portato via da una migrazione) si
+    // calcola invece a ogni lettura.
+    firstCycleCredit: { type: Number, min: 0, default: null },
     notes: { type: String, trim: true, default: "" },
   },
   { timestamps: true }

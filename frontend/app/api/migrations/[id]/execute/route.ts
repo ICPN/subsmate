@@ -5,7 +5,7 @@ import { Service } from "@/models/Service";
 import { Payment } from "@/models/Payment";
 import { PERIOD_MONTHS, addMonths, computeSubscription, coveredPeriod } from "@/lib/billing";
 import { migrationBalance } from "@/lib/migration";
-import { getMigration } from "@/lib/queries";
+import { getFirstCycleCreditAvailable, getMigration } from "@/lib/queries";
 import { ok, fail, handleError } from "@/lib/api";
 import { withAdmin } from "@/lib/requireAdmin";
 
@@ -91,6 +91,10 @@ async function handlePOST(_request: Request, { params }: Context) {
     const newDonation =
       oldSubscription.donationSupplement > 0 ? (newService.donationSupplement ?? 0) : 0;
 
+    // Il credito del primo mese passa sempre, qualunque sia closeOld: è
+    // denaro versato e mai addebitato dal fornitore.
+    const firstCycleCredit = await getFirstCycleCreditAvailable(oldSubscription._id);
+
     const balance = migrationBalance({
       effectiveDate: new Date(migration.effectiveDate),
       closeOld: migration.closeOld,
@@ -102,6 +106,7 @@ async function handlePOST(_request: Request, { params }: Context) {
       newMonthlyRate: newService.monthlyRate,
       newPeriodicity: newPeriodicity,
       newDonationSupplement: newDonation,
+      firstCycleCredit,
     });
 
     // Rivendicazione atomica: da qui in poi si scrive, e due richieste
@@ -184,7 +189,9 @@ async function handlePOST(_request: Request, { params }: Context) {
           kind: "credito_migrazione",
           periodStart,
           periodEnd,
-          notes: `Credito da ${oldService?.name ?? "servizio precedente"}: ${balance.creditMonths} mesi`,
+          notes: `Credito da ${oldService?.name ?? "servizio precedente"}: ${balance.creditMonths} mesi${
+            balance.firstCycleCredit > 0 ? " + credito del primo mese" : ""
+          }`,
         });
         daSpendere = Math.round((daSpendere - importo) * 100) / 100;
         ciclo += 1;
@@ -213,6 +220,8 @@ async function handlePOST(_request: Request, { params }: Context) {
         // Il netto davvero riconosciuto, che il cap su quanto era stato
         // incassato può rendere inferiore a creditMonths × tariffa.
         creditAmount: balance.creditAmount,
+        // Segna il credito del primo mese come speso sul vecchio abbonamento.
+        firstCycleCreditTransferred: balance.firstCycleCredit,
       });
 
       if (migration!.closeOld === "alla_decorrenza") {

@@ -7,7 +7,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { SubscriptionForm, type SubscriptionFormValues } from "@/components/SubscriptionForm";
 import { useToast } from "@/components/Toast";
 import { buttonPrimary, buttonSecondary } from "@/components/ui";
-import { formatEUR } from "@/lib/billing";
+import { formatEUR, isCreditKind } from "@/lib/billing";
 
 interface PersonOption {
   _id: string;
@@ -85,12 +85,12 @@ export function SubscriptionRowActions({
         return;
       }
       const body = await response.json().catch(() => null);
-      // Il credito di migrazione non e denaro incassato: sommarlo qui
+      // I crediti (migrazione, primo mese) non sono denaro incassato: sommarli qui
       // gonfierebbe il "totale storico" mostrato proprio mentre si decide se
-      // cancellare. E l'unico aggregato di denaro che lo contava ancora.
+      // cancellare.
       const payments = (body?.data?.payments ?? []) as { amount: number; kind?: string }[];
       const total = payments
-        .filter((payment) => payment.kind !== "credito_migrazione")
+        .filter((payment) => !isCreditKind(payment.kind))
         .reduce((sum, payment) => sum + payment.amount, 0);
       setConfirmMessage(
         payments.length > 0
