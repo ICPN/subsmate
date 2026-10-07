@@ -3,6 +3,7 @@ import { Migration } from "@/models/Migration";
 import { Subscription } from "@/models/Subscription";
 import { Service } from "@/models/Service";
 import { Payment } from "@/models/Payment";
+import { Person } from "@/models/Person";
 import { PERIOD_MONTHS, addMonths, computeSubscription, coveredPeriod } from "@/lib/billing";
 import { migrationBalance } from "@/lib/migration";
 import { getFirstCycleCreditAvailable, getMigration } from "@/lib/queries";
@@ -110,8 +111,9 @@ async function executeMigration(id: string) {
     oldSubscription.donationSupplement > 0 ? (newService.donationSupplement ?? 0) : 0;
 
   // Il credito del primo mese passa sempre, qualunque sia closeOld: è
-  // denaro versato e mai addebitato dal fornitore.
-  const firstCycleCredit = await getFirstCycleCreditAvailable(oldSubscription._id);
+  // denaro versato e mai addebitato dal fornitore. È della persona, quindi
+  // passa tutto quello che le resta, anche se nato su un altro abbonamento.
+  const firstCycleCredit = await getFirstCycleCreditAvailable(migration.person);
 
   const balance = migrationBalance({
     effectiveDate: new Date(migration.effectiveDate),
@@ -136,10 +138,10 @@ async function executeMigration(id: string) {
   ).lean();
   if (!claimed) throw new Error("Migrazione cambiata durante l'esecuzione");
 
-  // Anche il vecchio abbonamento si tocca subito: un pagamento che spende il
-  // suo credito del primo mese in contemporanea entra in conflitto, invece di
-  // spendere lo stesso credito che la migrazione sta trasferendo.
-  await Subscription.updateOne({ _id: oldSubscription._id }, { $set: { updatedAt: new Date() } });
+  // Anche la persona si tocca subito: un pagamento che spende il suo credito
+  // del primo mese in contemporanea, su qualunque abbonamento, entra in
+  // conflitto invece di spendere lo stesso credito che la migrazione trasferisce.
+  await Person.updateOne({ _id: migration.person }, { $set: { updatedAt: new Date() } });
 
   const newSubscription = existing
     ? await Subscription.findByIdAndUpdate(

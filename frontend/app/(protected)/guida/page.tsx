@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { PageHeader } from "@/components/PageHeader";
-import { Card } from "@/components/ui";
+import { Card, Emoji } from "@/components/ui";
 import { DUE_SOON_DAYS } from "@/lib/billing";
 
 /**
@@ -15,17 +15,17 @@ import { DUE_SOON_DAYS } from "@/lib/billing";
  */
 
 const SECTIONS = [
-  { id: "concetti", title: "Concetti chiave" },
-  { id: "nuovo-abbonamento", title: "Aggiungere una persona a un servizio" },
-  { id: "registrare-pagamento", title: "Registrare un pagamento" },
-  { id: "correggere-pagamento", title: "Correggere o eliminare un pagamento" },
-  { id: "primo-mese", title: "Gestire il primo mese di ChatGPT" },
-  { id: "migrazione", title: "Spostare una persona su un altro servizio" },
-  { id: "sospendere-chiudere", title: "Sospendere o chiudere un abbonamento" },
-  { id: "sollecitare", title: "Trovare chi sollecitare" },
-  { id: "servizi", title: "Aggiungere un servizio o cambiare una tariffa" },
-  { id: "profilo", title: "Cambiare email e password" },
-  { id: "casi-frequenti", title: "Casi frequenti" },
+  { id: "concetti", emoji: "💡", title: "Concetti chiave" },
+  { id: "nuovo-abbonamento", emoji: "👤", title: "Aggiungere una persona a un servizio" },
+  { id: "registrare-pagamento", emoji: "🧾", title: "Registrare un pagamento" },
+  { id: "correggere-pagamento", emoji: "✏️", title: "Correggere o eliminare un pagamento" },
+  { id: "primo-mese", emoji: "🎁", title: "Gestire il primo mese di ChatGPT" },
+  { id: "migrazione", emoji: "🔁", title: "Spostare una persona su un altro servizio" },
+  { id: "sospendere-chiudere", emoji: "⏸️", title: "Sospendere o chiudere un abbonamento" },
+  { id: "sollecitare", emoji: "📣", title: "Trovare chi sollecitare" },
+  { id: "servizi", emoji: "🧩", title: "Aggiungere un servizio o cambiare una tariffa" },
+  { id: "profilo", emoji: "🔐", title: "Cambiare email e password" },
+  { id: "casi-frequenti", emoji: "❓", title: "Casi frequenti" },
 ];
 
 export default async function GuidePage() {
@@ -48,6 +48,7 @@ export default async function GuidePage() {
                     href={`#${section.id}`}
                     className="block py-1 text-[var(--ink-muted)] underline-offset-2 hover:text-[var(--ink-navy)] hover:underline"
                   >
+                    <Emoji>{section.emoji}</Emoji>
                     {section.title}
                   </a>
                 </li>
@@ -57,7 +58,7 @@ export default async function GuidePage() {
         </nav>
 
         <div className="min-w-0 space-y-6">
-          <Section id="concetti" title="Concetti chiave">
+          <Section id="concetti" emoji="💡" title="Concetti chiave">
             <Dl>
               <Term name="Servizio">
                 Un abbonamento LLM del team, come Claude o ChatGPT. Ha una tariffa mensile per
@@ -117,7 +118,7 @@ export default async function GuidePage() {
             </P>
           </Section>
 
-          <Section id="nuovo-abbonamento" title="Aggiungere una persona a un servizio">
+          <Section id="nuovo-abbonamento" emoji="👤" title="Aggiungere una persona a un servizio">
             <Steps>
               <li>
                 Se la persona non c’è ancora: <Ui>Persone</Ui> → <Ui>Aggiungi persona</Ui>, con
@@ -141,7 +142,7 @@ export default async function GuidePage() {
             </Note>
           </Section>
 
-          <Section id="registrare-pagamento" title="Registrare un pagamento">
+          <Section id="registrare-pagamento" emoji="🧾" title="Registrare un pagamento">
             <P>
               Dalla scheda dell’abbonamento (riquadro <Ui>Registra pagamento</Ui>) oppure da{" "}
               <Ui>Pagamenti</Ui> → <Ui>Registra pagamento</Ui>, cercando la persona per nome,
@@ -174,7 +175,7 @@ export default async function GuidePage() {
             </P>
           </Section>
 
-          <Section id="correggere-pagamento" title="Correggere o eliminare un pagamento">
+          <Section id="correggere-pagamento" emoji="✏️" title="Correggere o eliminare un pagamento">
             <Steps>
               <li>
                 Nello storico (scheda dell’abbonamento o pagina <Ui>Pagamenti</Ui>) usa{" "}
@@ -201,7 +202,7 @@ export default async function GuidePage() {
             </P>
           </Section>
 
-          <Section id="primo-mese" title="Gestire il primo mese di ChatGPT">
+          <Section id="primo-mese" emoji="🎁" title="Gestire il primo mese di ChatGPT">
             <P>
               Quando aggiungi un posto a metà ciclo, ChatGPT addebita solo i giorni fino al
               rinnovo. La persona però ha versato il mese intero: la differenza è un suo credito,
@@ -231,13 +232,18 @@ export default async function GuidePage() {
               cambia la tariffa. Si ricalcola solo se correggi l’addebito.
             </Note>
             <P>
+              Il credito è della persona, non del solo abbonamento ChatGPT: se ha anche Claude, lo
+              puoi usare pagando l’uno o l’altro. Il modulo lo propone sul primo pagamento che
+              registri, su qualunque servizio; mettilo a 0 se vuoi usarlo su un altro.
+            </P>
+            <P>
               Per annullare un credito usato per errore, elimina la riga «Credito primo mese»
-              dallo storico: torna disponibile. Se la persona passa a un altro servizio, il
-              credito non usato passa con lei.
+              dallo storico: torna disponibile. Se la persona passa a un altro servizio, tutto il
+              credito non ancora usato passa con lei.
             </P>
           </Section>
 
-          <Section id="migrazione" title="Spostare una persona su un altro servizio">
+          <Section id="migrazione" emoji="🔁" title="Spostare una persona su un altro servizio">
             <P>
               Il passaggio, per esempio da ChatGPT a Claude, si pianifica in anticipo e si esegue
               alla data scelta. L’app non lo esegue da sola: avvisa, e l’esecuzione la fai tu.
@@ -302,7 +308,7 @@ export default async function GuidePage() {
             </Note>
           </Section>
 
-          <Section id="sospendere-chiudere" title="Sospendere o chiudere un abbonamento">
+          <Section id="sospendere-chiudere" emoji="⏸️" title="Sospendere o chiudere un abbonamento">
             <P>
               Dalla scheda dell’abbonamento → <Ui>Modifica</Ui> → «Stato onboarding».
             </P>
@@ -322,7 +328,7 @@ export default async function GuidePage() {
             </Note>
           </Section>
 
-          <Section id="sollecitare" title="Trovare chi sollecitare">
+          <Section id="sollecitare" emoji="📣" title="Trovare chi sollecitare">
             <Steps>
               <li>
                 <Ui>Dashboard</Ui>: i riquadri «In ritardo» e «In scadenza» contano gli abbonamenti
@@ -350,7 +356,7 @@ export default async function GuidePage() {
             </Dl>
           </Section>
 
-          <Section id="servizi" title="Aggiungere un servizio o cambiare una tariffa">
+          <Section id="servizi" emoji="🧩" title="Aggiungere un servizio o cambiare una tariffa">
             <Steps>
               <li>
                 <Ui>Servizi</Ui> → <Ui>Aggiungi servizio</Ui>: nome, tariffa mensile per persona,
@@ -369,7 +375,7 @@ export default async function GuidePage() {
             </Note>
           </Section>
 
-          <Section id="profilo" title="Cambiare email e password">
+          <Section id="profilo" emoji="🔐" title="Cambiare email e password">
             <Steps>
               <li>
                 <Ui>Profilo</Ui>, nell’header accanto a «Esci» (nel menu, da telefono). Ogni
@@ -390,7 +396,7 @@ export default async function GuidePage() {
             </Note>
           </Section>
 
-          <Section id="casi-frequenti" title="Casi frequenti">
+          <Section id="casi-frequenti" emoji="❓" title="Casi frequenti">
             <Faq question="Ha pagato il 3, perché scade il 18 e non il 3?">
               La scadenza segue il giorno di addebito del servizio, non quello del versamento:
               tutti pagano per lo stesso giorno in cui la piattaforma addebita il team.
@@ -419,10 +425,27 @@ export default async function GuidePage() {
   );
 }
 
-function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
+function Section({
+  id,
+  emoji,
+  title,
+  children,
+}: {
+  id: string;
+  emoji: string;
+  title: string;
+  children: ReactNode;
+}) {
   return (
     <section id={id} className="scroll-mt-6">
-      <Card title={title}>
+      <Card
+        title={
+          <>
+            <Emoji>{emoji}</Emoji>
+            {title}
+          </>
+        }
+      >
         <div className="space-y-4 px-4 py-4 text-sm leading-relaxed">{children}</div>
       </Card>
     </section>

@@ -59,7 +59,7 @@ export default async function ServicesPage({
 
       <Card title="Elenco">
         {allServices.length === 0 ? (
-          <EmptyState title="Nessun servizio configurato">
+          <EmptyState emoji="🧩" title="Nessun servizio configurato">
             Esegui <code className="font-mono text-xs">python execution/seed_services.py</code>{" "}
             per creare Claude e ChatGPT, oppure usa{" "}
             <code className="font-mono text-xs">POST /api/services</code>.

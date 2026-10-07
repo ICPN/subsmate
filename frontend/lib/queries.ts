@@ -100,13 +100,8 @@ export async function listSubscriptions(
     { subscription: { $in: subscriptions.map((sub) => sub._id) } },
     { subscription: 1, amount: 1, paidAt: 1, periodStart: 1, kind: 1 }
   ).lean();
-  // Credito del primo mese già speso, per abbonamento.
-  const firstCycleUsed = new Map<string, number[]>();
   for (const payment of payments) {
     const key = String(payment.subscription);
-    if (payment.kind === "credito_primo_mese") {
-      firstCycleUsed.set(key, [...(firstCycleUsed.get(key) ?? []), payment.amount]);
-    }
     const list = paymentsBySubscription.get(key) ?? [];
     list.push({
       amount: payment.amount,
@@ -130,17 +125,13 @@ export async function listSubscriptions(
   const migrationsBySubscription = new Map<string, (typeof migrations)[number]>();
   for (const migration of migrations) {
     const key = String(migration.fromSubscription);
-    // Il credito del primo mese portato via da una migrazione eseguita conta
-    // come speso: tutte le migrazioni, non solo la più recente.
-    if (migration.status === "eseguita" && migration.firstCycleCreditTransferred) {
-      firstCycleUsed.set(key, [
-        ...(firstCycleUsed.get(key) ?? []),
-        migration.firstCycleCreditTransferred,
-      ]);
-    }
     // La più recente vince: le precedenti sono storia già chiusa.
     if (!migrationsBySubscription.has(key)) migrationsBySubscription.set(key, migration);
   }
+
+  const creditByPerson = await firstCycleCreditByPerson(
+    subscriptions.map((sub) => (sub.person as unknown as { _id: Types.ObjectId } | null)?._id)
+  );
 
   const now = new Date();
   return subscriptions.map((sub) => {
@@ -159,10 +150,8 @@ export async function listSubscriptions(
       now
     );
 
-    const firstCycleCreditAvailable = availableFirstCycleCredit(
-      sub.firstCycleCredit,
-      firstCycleUsed.get(String(sub._id)) ?? []
-    );
+    const personId = (sub.person as unknown as { _id: unknown } | null)?._id;
+    const firstCycleCreditAvailable = personId ? (creditByPerson.get(String(personId)) ?? 0) : 0;
 
     const raw = migrationsBySubscription.get(String(sub._id));
     const toService = raw?.toService as unknown as MigrationView["toService"];
@@ -240,27 +229,62 @@ export async function listSubscriptions(
 }
 
 /**
- * Credito del primo mese ancora disponibile su un abbonamento, per le rotte
- * che scrivono (registrazione pagamento, esecuzione migrazione). Stessa regola
- * di `listSubscriptions`, che però lo calcola in blocco per tutte le righe.
+ * Credito del primo mese ancora disponibile per persona. È della persona, non
+ * dell'abbonamento che l'ha generato: chi ha ChatGPT e Claude lo spende anche
+ * su Claude. Credito di tutti i suoi abbonamenti, meno le righe
+ * "credito_primo_mese" su qualunque abbonamento, meno quanto portato via dalle
+ * migrazioni eseguite.
+ *
+ * In sequenza e non in parallelo: la usano anche le rotte che scrivono in
+ * transazione, e una transazione non accetta operazioni parallele.
  */
-export async function getFirstCycleCreditAvailable(subscriptionId: string | Types.ObjectId): Promise<number> {
-  await connectToDatabase();
-  // In sequenza e non in parallelo: la usano anche le rotte che scrivono in
-  // transazione, e una transazione non accetta operazioni parallele.
-  const subscription = await Subscription.findById(subscriptionId, { firstCycleCredit: 1 }).lean();
+async function firstCycleCreditByPerson(
+  personIds: (string | Types.ObjectId | null | undefined)[]
+): Promise<Map<string, number>> {
+  const ids = personIds.filter((id): id is string | Types.ObjectId => Boolean(id));
+  const credits = new Map<string, number>();
+  const used = new Map<string, number[]>();
+  if (ids.length === 0) return new Map();
+
+  const sources = await Subscription.find(
+    { person: { $in: ids }, firstCycleCredit: { $gt: 0 } },
+    { person: 1, firstCycleCredit: 1 }
+  ).lean();
+  for (const sub of sources) {
+    const key = String(sub.person);
+    credits.set(key, (credits.get(key) ?? 0) + (sub.firstCycleCredit ?? 0));
+  }
+  if (credits.size === 0) return new Map();
+
   const spent = await Payment.find(
-    { subscription: subscriptionId, kind: "credito_primo_mese" },
-    { amount: 1 }
+    { person: { $in: ids }, kind: "credito_primo_mese" },
+    { person: 1, amount: 1 }
   ).lean();
-  const migrations = await Migration.find(
-    { fromSubscription: subscriptionId, status: "eseguita" },
-    { firstCycleCreditTransferred: 1 }
+  const transferred = await Migration.find(
+    { person: { $in: ids }, status: "eseguita", firstCycleCreditTransferred: { $gt: 0 } },
+    { person: 1, firstCycleCreditTransferred: 1 }
   ).lean();
-  return availableFirstCycleCredit(subscription?.firstCycleCredit, [
-    ...spent.map((payment) => payment.amount),
-    ...migrations.map((migration) => migration.firstCycleCreditTransferred ?? 0),
-  ]);
+  for (const [person, amount] of [
+    ...spent.map((payment) => [String(payment.person), payment.amount] as const),
+    ...transferred.map(
+      (migration) => [String(migration.person), migration.firstCycleCreditTransferred ?? 0] as const
+    ),
+  ]) {
+    used.set(person, [...(used.get(person) ?? []), amount]);
+  }
+
+  return new Map(
+    [...credits].map(([person, credit]) => [
+      person,
+      availableFirstCycleCredit(credit, used.get(person) ?? []),
+    ])
+  );
+}
+
+/** Credito del primo mese disponibile per una persona, per le rotte che scrivono. */
+export async function getFirstCycleCreditAvailable(personId: string | Types.ObjectId): Promise<number> {
+  await connectToDatabase();
+  return (await firstCycleCreditByPerson([personId])).get(String(personId)) ?? 0;
 }
 
 /**

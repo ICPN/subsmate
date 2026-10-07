@@ -6,6 +6,7 @@ import { StatusBadge, Pill } from "@/components/StatusBadge";
 import {
   Card,
   StatCard,
+  Emoji,
   TableWrap,
   SortableTh,
   Th,
@@ -47,7 +48,8 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<{ sort?: string; dir?: string }>;
 }) {
-  await requireAdmin("/");
+  const admin = await requireAdmin("/");
+  const firstName = admin.name.split(" ")[0];
   const { sort, dir } = await searchParams;
   const { totals, counters, attention, byService, recentPayments, plannedMigrations, registry } =
     await getDashboardData();
@@ -63,7 +65,13 @@ export default async function DashboardPage({
     <div className="space-y-6">
       <PageHeader
         title="Dashboard"
-        description="Stato degli abbonamenti del team: quanto è dovuto nel ciclo corrente e chi va sollecitato. Ogni riquadro porta alla pagina che lo gestisce."
+        description={
+          <>
+            <Emoji>👋</Emoji>
+            Ciao {firstName}, ecco quanto è dovuto nel ciclo corrente e chi va sollecitato. Ogni
+            riquadro porta alla pagina che lo gestisce.
+          </>
+        }
         action={
           <LinkButton href="/abbonamenti" variant="primary">
             Vedi abbonamenti
@@ -87,6 +95,7 @@ export default async function DashboardPage({
         />
         <StatCard
           label="In ritardo"
+          emoji="⚠️"
           value={String(counters.in_ritardo)}
           hint="da sollecitare"
           tone={counters.in_ritardo > 0 ? "critical" : "default"}
@@ -94,6 +103,7 @@ export default async function DashboardPage({
         />
         <StatCard
           label="In scadenza"
+          emoji="⏳"
           value={String(counters.in_scadenza)}
           hint="entro 15 giorni"
           tone={counters.in_scadenza > 0 ? "warn" : "default"}
@@ -101,6 +111,7 @@ export default async function DashboardPage({
         />
         <StatCard
           label="Da attivare"
+          emoji="🌱"
           value={String(counters.da_attivare)}
           hint="in attesa del primo pagamento"
           tone={counters.da_attivare > 0 ? "neutral" : "default"}
@@ -127,7 +138,7 @@ export default async function DashboardPage({
           }
         >
           {byService.length === 0 ? (
-            <EmptyState title="Nessun abbonamento attivo">
+            <EmptyState emoji="📭" title="Nessun abbonamento attivo">
               La ripartizione compare quando c&apos;è almeno un abbonamento attivo.
             </EmptyState>
           ) : (
@@ -188,7 +199,7 @@ export default async function DashboardPage({
           }
         >
           {recentPayments.length === 0 ? (
-            <EmptyState title="Nessun pagamento registrato">
+            <EmptyState emoji="🧾" title="Nessun pagamento registrato">
               I pagamenti compaiono qui appena ne registri uno.
             </EmptyState>
           ) : (
@@ -298,7 +309,7 @@ export default async function DashboardPage({
         }
       >
         {attention.length === 0 ? (
-          <EmptyState title="Nessun abbonamento da seguire">
+          <EmptyState emoji="🎉" title="Nessun abbonamento da seguire">
             Tutti gli abbonamenti attivi sono in regola. Gli abbonamenti compaiono qui quando
             mancano meno di 15 giorni alla scadenza.
           </EmptyState>

@@ -29,6 +29,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           className="fixed inset-x-0 bottom-4 z-[60] flex justify-center px-4 sm:justify-end sm:right-4 sm:px-0"
         >
           <div className="rounded-[var(--radius)] bg-[var(--ink-navy)] px-4 py-3 text-sm text-white shadow-lg">
+            {/* Ogni notifica conferma un'azione riuscita: gli errori restano nel
+                modulo, accanto al campo da correggere. */}
+            <span aria-hidden className="mr-1.5">
+              ✅
+            </span>
             {toast.message}
           </div>
         </div>

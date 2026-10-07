@@ -115,7 +115,7 @@ export function SubscriptionsTable({
       </div>
 
       {visible.length === 0 ? (
-        <EmptyState title="Nessun abbonamento da mostrare">
+        <EmptyState emoji="🔍" title="Nessun abbonamento da mostrare">
           {query.trim() ? (
             <>Nessun abbonamento corrisponde a «{query.trim()}».</>
           ) : totalCount === 0 ? (

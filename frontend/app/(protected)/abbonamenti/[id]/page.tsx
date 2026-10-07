@@ -194,7 +194,7 @@ export default async function SubscriptionDetailPage({
           }
         >
           {payments.length === 0 ? (
-            <EmptyState title="Nessun pagamento registrato">
+            <EmptyState emoji="🧾" title="Nessun pagamento registrato">
               {sub.onboardingStatus === "da_attivare"
                 ? (
                   <>

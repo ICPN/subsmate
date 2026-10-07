@@ -93,6 +93,18 @@ Due famiglie, ruoli distinti e non intercambiabili: Manrope per "guardare", Inte
 
 **Icone** — solo lineari, monocromatiche, in cerchi Surface quando isolate (come nel riferimento); usate per identificare rapidamente un servizio (Claude/ChatGPT/futuri), non come decorazione.
 
+**Emoji** (introdotte il 2026-10-07 per rendere l'app più amichevole) — servono a orientarsi, non a decorare. Una sola per elemento, sempre all'inizio, nascosta ai lettori di schermo (`aria-hidden`, componente `Emoji` in `components/ui.tsx`): il testo accanto deve bastare da solo.
+
+| Dove sì | Emoji |
+| --- | --- |
+| Saluto in dashboard | 👋 |
+| Contatori di stato in dashboard | ⚠️ in ritardo · ⏳ in scadenza · 🌱 da attivare |
+| Stati vuoti, secondo cosa manca | 🧾 pagamenti · 👥 persone · 🧩 servizi · 📭 abbonamenti attivi · 🔍 ricerca senza risultati · 🎉 nessuno da sollecitare |
+| Notifiche di conferma | ✅ |
+| Indice e titoli della guida | una per sezione |
+
+Dove no: badge di stato, tabelle, importi e date, bottoni, menu di navigazione, messaggi di errore, login. Lì il tono resta quello di uno strumento contabile, e una stessa emoji non cambia significato da una pagina all'altra.
+
 ## 7. Tono di voce nei testi dell'interfaccia
 
 - Frasi brevi, verbo all'inizio per le azioni: "Registra pagamento", "Aggiungi abbonamento", "Segna come pagato".
@@ -105,5 +117,6 @@ Due famiglie, ruoli distinti e non intercambiabili: Manrope per "guardare", Inte
 - Sfondo scuro su intere pagine di dati (affatica la lettura di tabelle lunghe).
 - Etichette in maiuscolo tracciato (stile "eyebrow").
 - Frecce (→) decorative su bottoni e link.
+- Emoji decorative o in serie, e emoji fuori dai punti elencati al §6.
 - Ombre morbide generiche sotto ogni card: usare bordi sottili, coerenti col riferimento ICPN.
 - Un quinto colore "decorativo" oltre a quelli in palette: ogni colore in SubsMate deve avere un significato (identità o stato), mai puramente estetico.

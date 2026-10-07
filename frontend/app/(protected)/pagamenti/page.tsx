@@ -136,7 +136,7 @@ export default async function PaymentsPage({
         }
       >
         {payments.length === 0 ? (
-          <EmptyState title="Nessun pagamento registrato">
+          <EmptyState emoji="🧾" title="Nessun pagamento registrato">
             Registra il primo pagamento con il pulsante in alto, oppure dalla scheda di
             un abbonamento.
           </EmptyState>

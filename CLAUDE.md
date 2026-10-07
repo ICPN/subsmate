@@ -129,14 +129,19 @@ credito della persona. Nessun riferimento a ChatGPT nel codice: vale per ogni se
 - **Il credito è fissato all'inserimento** (`firstCycleCredit` = tariffa di allora −
   addebito, donazione esclusa) e non segue i cambi di tariffa. La PATCH lo ricalcola solo
   se l'addebito cambia davvero: il modulo lo reinvia a ogni salvataggio.
-- **Il disponibile si calcola**: credito − righe `credito_primo_mese` −
-  `Migration.firstCycleCreditTransferred` delle migrazioni eseguite.
+- **Il credito è della persona, non dell'abbonamento**: chi ha ChatGPT e Claude lo spende
+  anche su Claude. Il disponibile si calcola per persona: somma dei `firstCycleCredit` dei
+  suoi abbonamenti − righe `credito_primo_mese` su qualunque abbonamento −
+  `Migration.firstCycleCreditTransferred` delle migrazioni eseguite. Le rotte che lo
+  spendono scrivono sul documento `Person` in transazione: il conflitto blocca due spese
+  simultanee su abbonamenti diversi.
 - **Si spende registrando un pagamento**, come riga `credito_primo_mese` con lo stesso
   periodo dell'incasso, non agganciata in anticipo: un pagamento in ritardo sposta il
   ciclo e lascerebbe il credito su quello sbagliato. Si cancella (torna disponibile), non
   si modifica.
 - **Passa sempre in una migrazione**, anche con `a_scadenza`, sommato al credito dei mesi
-  e fuori dal tetto «mai più dell'incassato»: è denaro già versato.
+  e fuori dal tetto «mai più dell'incassato»: è denaro già versato. Passa tutto il
+  disponibile della persona.
 
 ## Modello dati
 
@@ -264,6 +269,9 @@ Regole visive vincolanti in `brand-guidelines.md`, token in `frontend/app/global
 - I quattro colori di stato (ok / attenzione / critico / neutro) non vanno mai riusati per
   bottoni, link o decorazione.
 - Bordi sottili al posto delle ombre; ombre solo per elementi sovrapposti.
+- Emoji **solo** nei punti elencati in `brand-guidelines.md` §6 (saluto, contatori di stato,
+  stati vuoti, conferme, guida), sempre con il componente `Emoji` (`aria-hidden`). Mai in
+  badge, tabelle, importi, bottoni, menu o errori.
 - Manrope per titoli e numeri, Inter per testo e tabelle, `tabular-nums` su tutti gli
   importi e le date.
 - Tono di voce: stati espliciti («In ritardo di 8 giorni», non «Attenzione richiesta»),

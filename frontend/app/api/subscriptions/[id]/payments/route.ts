@@ -12,6 +12,7 @@ import {
 } from "@/lib/billing";
 import { withAdmin } from "@/lib/requireAdmin";
 import { getFirstCycleCreditAvailable } from "@/lib/queries";
+import { Person } from "@/models/Person";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -136,9 +137,14 @@ async function registerPayment(
   );
 
   if (creditToUse > 0) {
-    // Il credito del primo mese si spende solo per quanto ne resta: lo
-    // decide il server, il form lo propone soltanto.
-    const available = await getFirstCycleCreditAvailable(id);
+    // Il credito del primo mese è della persona e si spende su qualunque suo
+    // abbonamento: il conflitto va quindi provocato sulla persona, non solo
+    // sull'abbonamento. Due pagamenti simultanei su ChatGPT e Claude della
+    // stessa persona si scontrano qui, e il secondo rilegge il disponibile.
+    await Person.updateOne({ _id: subscription.person }, { $set: { updatedAt: new Date() } });
+    // Si spende solo per quanto ne resta: lo decide il server, il form lo
+    // propone soltanto.
+    const available = await getFirstCycleCreditAvailable(subscription.person);
     if (creditToUse > available + 0.004) {
       return fail(
         `Il credito del primo mese disponibile è ${formatEUR(available)}: non se ne può usare di più.`,

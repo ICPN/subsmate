@@ -76,7 +76,7 @@ export default async function PeoplePage({
 
       <Card title="Elenco">
         {people.length === 0 ? (
-          <EmptyState title="Nessuna persona registrata">
+          <EmptyState emoji="👥" title="Nessuna persona registrata">
             Le persone vengono create dall&apos;import del Google Sheet oppure con{" "}
             <code className="font-mono text-xs">POST /api/people</code>.
           </EmptyState>

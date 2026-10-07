@@ -9,13 +9,26 @@ import type { SortState } from "@/lib/sorting";
  * sovrapposti (§5).
  */
 
+/**
+ * Emoji di orientamento (brand-guidelines §6): una sola, all'inizio, mai
+ * decorativa. `aria-hidden` perché il testo accanto deve bastare da solo: un
+ * lettore di schermo direbbe «segno di spunta verde» prima di ogni conferma.
+ */
+export function Emoji({ children, className = "" }: { children: string; className?: string }) {
+  return (
+    <span aria-hidden className={`mr-1.5 inline-block not-italic ${className}`}>
+      {children}
+    </span>
+  );
+}
+
 export function Card({
   title,
   action,
   children,
   className = "",
 }: {
-  title?: string;
+  title?: ReactNode;
   action?: ReactNode;
   children: ReactNode;
   className?: string;
@@ -47,12 +60,15 @@ export function Card({
  */
 export function StatCard({
   label,
+  emoji,
   value,
   hint,
   tone = "default",
   href,
 }: {
   label: string;
+  /** Solo per i contatori di stato: rafforza il significato, non decora. */
+  emoji?: string;
   value: string;
   hint?: string;
   tone?: "default" | "ok" | "warn" | "critical" | "neutral";
@@ -82,7 +98,10 @@ export function StatCard({
       >
         {value}
       </p>
-      <p className="mt-1.5 text-sm font-medium">{label}</p>
+      <p className="mt-1.5 text-sm font-medium">
+        {emoji ? <Emoji>{emoji}</Emoji> : null}
+        {label}
+      </p>
       {hint ? <p className="mt-1 text-xs text-[var(--ink-muted)]">{hint}</p> : null}
     </>
   );
@@ -222,9 +241,23 @@ export function Td({
   );
 }
 
-export function EmptyState({ title, children }: { title: string; children?: ReactNode }) {
+export function EmptyState({
+  title,
+  emoji,
+  children,
+}: {
+  title: string;
+  /** Dice di che vuoto si tratta: 🧾 pagamenti, 👥 persone, 🔍 ricerca senza risultati. */
+  emoji?: string;
+  children?: ReactNode;
+}) {
   return (
     <div className="px-4 py-8 text-center">
+      {emoji ? (
+        <p aria-hidden className="mb-2 text-[32px] leading-none">
+          {emoji}
+        </p>
+      ) : null}
       <p className="font-[family-name:var(--font-manrope)] text-[18px] font-semibold">{title}</p>
       {children ? (
         <div className="mx-auto mt-2 max-w-md text-sm break-words text-[var(--ink-muted)]">{children}</div>
