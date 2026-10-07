@@ -15,13 +15,14 @@ export const PERIOD_MONTHS: Record<Periodicity, number> = {
 /** Giorni di preavviso entro i quali un abbonamento è considerato "in scadenza" (brand-guidelines.md §3). */
 export const DUE_SOON_DAYS = 15;
 
-export type PaymentStatus = "in_regola" | "in_scadenza" | "in_ritardo" | "da_attivare";
+export type PaymentStatus = "in_regola" | "in_scadenza" | "in_ritardo" | "da_attivare" | "cessato";
 
 export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
   in_regola: "In regola",
   in_scadenza: "In scadenza",
   in_ritardo: "In ritardo",
   da_attivare: "Da attivare",
+  cessato: "Cessato",
 };
 
 /** Somma mesi a una data gestendo i mesi corti (31 gen + 1 mese = 28/29 feb). */
@@ -102,6 +103,10 @@ export function paymentStatus(
   onboardingStatus: OnboardingStatus,
   now: Date = new Date()
 ): PaymentStatus {
+  // Un abbonamento chiuso non deve più nulla: senza questo controllo, passata
+  // la sua ultima scadenza risulterebbe in ritardo per sempre (per esempio il
+  // vecchio abbonamento dopo una migrazione) e finirebbe fra quelli da seguire.
+  if (onboardingStatus === "cessato") return "cessato";
   if (onboardingStatus === "da_attivare" || !due) return "da_attivare";
   const remaining = daysBetween(now, due);
   if (remaining < 0) return "in_ritardo";
@@ -125,9 +130,20 @@ export interface SubscriptionComputation {
 /** Pagamento, ridotto ai campi che servono al calcolo del saldo. */
 export interface PaymentForBalance {
   amount: number;
-  /** Quando è stato versato: da qui si ricava il periodo se non è salvato. */
+  /** Quando è stato versato: è l'inizio del periodo se questo non è salvato. */
   paidAt?: Date | string | null;
-  periodEnd?: Date | string | null;
+  /**
+   * Inizio del ciclo che il pagamento copre. Di solito coincide con paidAt;
+   * differisce per i versamenti che completano un ciclo già aperto e per i
+   * crediti di migrazione, ancorati all'inizio del ciclo che chiudono.
+   */
+  periodStart?: Date | string | null;
+}
+
+/** Inizio del ciclo coperto da un pagamento: periodStart, o paidAt se manca. */
+function periodAnchor(payment: PaymentForBalance): Date | null {
+  const anchor = payment.periodStart ?? payment.paidAt;
+  return anchor ? new Date(anchor) : null;
 }
 
 /** Stesso giorno di calendario, ignorando l'orario. */
@@ -144,9 +160,9 @@ function isSameDay(a: Date, b: Date): boolean {
  *
  * Un pagamento appartiene al ciclo corrente se la fine del periodo che copre
  * coincide con la scadenza corrente: tutti i versamenti fatti nello stesso
- * ciclo sono ancorati allo stesso giorno di addebito, quindi condividono il
- * medesimo `periodEnd`. Serve a sommare più versamenti parziali dello stesso
- * ciclo senza confonderli con quelli dei cicli precedenti.
+ * ciclo sono ancorati allo stesso giorno di addebito, quindi condividono la
+ * stessa fine. Serve a sommare più versamenti parziali dello stesso ciclo
+ * senza confonderli con quelli dei cicli precedenti.
  */
 export function paidForCycle(
   payments: PaymentForBalance[],
@@ -156,19 +172,34 @@ export function paidForCycle(
 ): number {
   if (!due) return 0;
   const total = payments.reduce((sum, payment) => {
-    // periodEnd è calcolabile da paidAt: salvarlo è una comodità, non la
-    // fonte di verità. Le righe importate dal Google Sheet non ce l'hanno, e
-    // fidarsi del campo le rendeva invisibili al calcolo — l'abbonamento
-    // risultava non pagato e un'eventuale migrazione non maturava credito.
-    const end = payment.periodEnd
-      ? new Date(payment.periodEnd)
-      : payment.paidAt
-        ? coveredPeriod(new Date(payment.paidAt), periodicity, billingDayOfMonth).periodEnd
-        : null;
-    if (!end) return sum;
+    // La fine del periodo si ricalcola sempre con la periodicità e il giorno
+    // di addebito di adesso, come la scadenza: il periodEnd salvato resta
+    // quello di quando il pagamento è nato, e dopo un cambio di periodicità o
+    // di giorno di addebito non combacerebbe più — il ciclo risulterebbe non
+    // pagato e una migrazione non maturerebbe credito. Le righe importate dal
+    // Google Sheet non hanno periodo salvato: lo si ricava da paidAt.
+    const anchor = periodAnchor(payment);
+    if (!anchor) return sum;
+    const end = coveredPeriod(anchor, periodicity, billingDayOfMonth).periodEnd;
     return isSameDay(end, due) ? sum + payment.amount : sum;
   }, 0);
   return round2(total);
+}
+
+/**
+ * `lastPaymentDate` ricostruita dallo storico, quando il pagamento che la
+ * definiva viene corretto o cancellato: l'inizio dell'ultimo ciclo coperto,
+ * non il paidAt più recente. I crediti di migrazione hanno tutti paidAt alla
+ * decorrenza ma coprono cicli successivi: ripartire da paidAt farebbe
+ * arretrare la scadenza di cicli già pagati.
+ */
+export function lastPaymentDateFrom(payments: PaymentForBalance[]): Date | null {
+  let latest: Date | null = null;
+  for (const payment of payments) {
+    const anchor = periodAnchor(payment);
+    if (anchor && (!latest || anchor > latest)) latest = anchor;
+  }
+  return latest;
 }
 
 /** Calcolo completo per un abbonamento: usato da API e UI, un'unica fonte di verità. */
@@ -307,6 +338,7 @@ export function toDateInputValue(value: Date | string | null | undefined): strin
  * del brand: "In ritardo di 5 giorni" invece di "Attenzione richiesta".
  */
 export function statusDetail(status: PaymentStatus, daysToDue: number | null): string {
+  if (status === "cessato") return "Abbonamento chiuso";
   if (status === "da_attivare" || daysToDue === null) return "Nessun pagamento registrato";
   if (status === "in_ritardo") return `In ritardo di ${plural(Math.abs(daysToDue), "giorno", "giorni")}`;
   if (daysToDue === 0) return "Scade oggi";

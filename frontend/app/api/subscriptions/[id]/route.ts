@@ -1,8 +1,9 @@
-import { connectToDatabase } from "@/lib/mongodb";
+import { connectToDatabase, inTransaction } from "@/lib/mongodb";
 import { Subscription } from "@/models/Subscription";
 import { Payment } from "@/models/Payment";
 import { Person } from "@/models/Person";
 import { Service } from "@/models/Service";
+import { Migration } from "@/models/Migration";
 import { subscriptionUpdateSchema } from "@/lib/validation";
 import { ok, fail, handleError, parseBody } from "@/lib/api";
 import { computeSubscription, firstCycleCredit } from "@/lib/billing";
@@ -87,17 +88,34 @@ async function handlePATCH(request: Request, { params }: Context) {
   }
 }
 
-/** Elimina l'abbonamento e il suo storico pagamenti. */
+/**
+ * Elimina l'abbonamento e il suo storico pagamenti, insieme o per niente.
+ * Non se una migrazione lo riferisce: quella eseguita perderebbe la sua
+ * storia, quella pianificata partirebbe da un abbonamento che non c'è più.
+ */
 async function handleDELETE(_request: Request, { params }: Context) {
   try {
     await connectToDatabase();
     const { id } = await params;
 
-    const subscription = await Subscription.findByIdAndDelete(id).lean();
-    if (!subscription) return fail("Abbonamento non trovato", 404);
+    return await inTransaction(async () => {
+      const migrations = await Migration.countDocuments({
+        $or: [{ fromSubscription: id }, { toSubscription: id }],
+        status: { $ne: "annullata" },
+      });
+      if (migrations > 0) {
+        return fail(
+          "Impossibile eliminare: l'abbonamento ha migrazioni registrate. Annulla quella pianificata, o cessa l'abbonamento invece di eliminarlo.",
+          409
+        );
+      }
 
-    const { deletedCount } = await Payment.deleteMany({ subscription: id });
-    return ok({ deleted: true, paymentsDeleted: deletedCount });
+      const subscription = await Subscription.findByIdAndDelete(id).lean();
+      if (!subscription) return fail("Abbonamento non trovato", 404);
+
+      const { deletedCount } = await Payment.deleteMany({ subscription: id });
+      return ok({ deleted: true, paymentsDeleted: deletedCount });
+    });
   } catch (err) {
     return handleError(err);
   }

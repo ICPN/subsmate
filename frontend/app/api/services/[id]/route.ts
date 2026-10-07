@@ -1,6 +1,7 @@
 import { connectToDatabase } from "@/lib/mongodb";
 import { Service } from "@/models/Service";
 import { Subscription } from "@/models/Subscription";
+import { Migration } from "@/models/Migration";
 import { serviceUpdateSchema } from "@/lib/validation";
 import { ok, fail, handleError, parseBody } from "@/lib/api";
 import { withAdmin } from "@/lib/requireAdmin";
@@ -37,7 +38,7 @@ async function handlePATCH(request: Request, { params }: Context) {
   }
 }
 
-/** Il servizio si elimina solo se nessun abbonamento lo referenzia. */
+/** Il servizio si elimina solo se nessun abbonamento o migrazione lo referenzia. */
 async function handleDELETE(_request: Request, { params }: Context) {
   try {
     await connectToDatabase();
@@ -47,6 +48,17 @@ async function handleDELETE(_request: Request, { params }: Context) {
     if (inUse > 0) {
       return fail(
         `Impossibile eliminare: ${inUse} abbonamenti usano questo servizio. Disattivalo invece.`,
+        409
+      );
+    }
+
+    const migrations = await Migration.countDocuments({
+      toService: id,
+      status: { $ne: "annullata" },
+    });
+    if (migrations > 0) {
+      return fail(
+        "Impossibile eliminare: una migrazione porta a questo servizio. Annullala o disattiva il servizio.",
         409
       );
     }

@@ -10,6 +10,7 @@ const COLORS: Record<PaymentStatus, string> = {
   in_scadenza: "var(--status-warn)",
   in_ritardo: "var(--status-critical)",
   da_attivare: "var(--status-neutral)",
+  cessato: "var(--status-neutral)",
 };
 
 export function StatusBadge({ status }: { status: PaymentStatus }) {

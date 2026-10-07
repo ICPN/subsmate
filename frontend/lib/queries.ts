@@ -94,11 +94,11 @@ export async function listSubscriptions(
   // query per tutti gli abbonamenti invece di una per riga.
   const paymentsBySubscription = new Map<
     string,
-    { amount: number; paidAt: Date | null; periodEnd: Date | null }[]
+    { amount: number; paidAt: Date | null; periodStart: Date | null }[]
   >();
   const payments = await Payment.find(
     { subscription: { $in: subscriptions.map((sub) => sub._id) } },
-    { subscription: 1, amount: 1, paidAt: 1, periodEnd: 1, kind: 1 }
+    { subscription: 1, amount: 1, paidAt: 1, periodStart: 1, kind: 1 }
   ).lean();
   // Credito del primo mese già speso, per abbonamento.
   const firstCycleUsed = new Map<string, number[]>();
@@ -111,7 +111,7 @@ export async function listSubscriptions(
     list.push({
       amount: payment.amount,
       paidAt: payment.paidAt ?? null,
-      periodEnd: payment.periodEnd ?? null,
+      periodStart: payment.periodStart ?? null,
     });
     paymentsBySubscription.set(key, list);
   }
@@ -246,14 +246,17 @@ export async function listSubscriptions(
  */
 export async function getFirstCycleCreditAvailable(subscriptionId: string | Types.ObjectId): Promise<number> {
   await connectToDatabase();
-  const [subscription, spent, migrations] = await Promise.all([
-    Subscription.findById(subscriptionId, { firstCycleCredit: 1 }).lean(),
-    Payment.find({ subscription: subscriptionId, kind: "credito_primo_mese" }, { amount: 1 }).lean(),
-    Migration.find(
-      { fromSubscription: subscriptionId, status: "eseguita" },
-      { firstCycleCreditTransferred: 1 }
-    ).lean(),
-  ]);
+  // In sequenza e non in parallelo: la usano anche le rotte che scrivono in
+  // transazione, e una transazione non accetta operazioni parallele.
+  const subscription = await Subscription.findById(subscriptionId, { firstCycleCredit: 1 }).lean();
+  const spent = await Payment.find(
+    { subscription: subscriptionId, kind: "credito_primo_mese" },
+    { amount: 1 }
+  ).lean();
+  const migrations = await Migration.find(
+    { fromSubscription: subscriptionId, status: "eseguita" },
+    { firstCycleCreditTransferred: 1 }
+  ).lean();
   return availableFirstCycleCredit(subscription?.firstCycleCredit, [
     ...spent.map((payment) => payment.amount),
     ...migrations.map((migration) => migration.firstCycleCreditTransferred ?? 0),
@@ -325,6 +328,7 @@ export async function getDashboardData() {
   const late = subscriptions.filter((s) => s.computed.status === "in_ritardo");
   const dueSoon = subscriptions.filter((s) => s.computed.status === "in_scadenza");
   const toActivate = subscriptions.filter((s) => s.computed.status === "da_attivare");
+  const inOrder = subscriptions.filter((s) => s.computed.status === "in_regola");
 
   // I crediti (migrazione, primo mese) sono denaro già contato altrove:
   // chiudono un ciclo ma non sono un incasso, e sommarli qui li conterebbe
@@ -388,8 +392,8 @@ export async function getDashboardData() {
       in_ritardo: late.length,
       in_scadenza: dueSoon.length,
       da_attivare: toActivate.length,
-      in_regola:
-        subscriptions.length - late.length - dueSoon.length - toActivate.length,
+      // Contati, non ricavati per differenza: i cessati non sono in regola.
+      in_regola: inOrder.length,
     },
     // Ordinati per urgenza: scadenza più arretrata in cima. Entrano anche gli
     // abbonamenti con una migrazione da seguire, che possono essere in regola

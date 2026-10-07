@@ -50,3 +50,24 @@ export async function connectToDatabase(): Promise<typeof mongoose> {
 
   return cached.conn;
 }
+
+// Dentro inTransaction() ogni query riceve la sessione da sola: senza, una
+// sola chiamata che la dimentica scriverebbe fuori dalla transazione.
+mongoose.set("transactionAsyncLocalStorage", true);
+
+/**
+ * Esegue `fn` in una transazione: o tutte le scritture o nessuna. Il driver
+ * la ritenta da capo sui conflitti di scrittura, quindi `fn` rilegge tutto
+ * ciò che decide e non ha effetti fuori dal database.
+ *
+ * Richiede un replica set (Atlas): il MongoDB locale standalone non supporta
+ * le transazioni.
+ */
+export async function inTransaction<T>(fn: () => Promise<T>): Promise<T> {
+  const { connection } = await connectToDatabase();
+  let result: T | undefined;
+  await connection.transaction(async () => {
+    result = await fn();
+  });
+  return result as T;
+}

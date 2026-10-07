@@ -35,7 +35,11 @@ export function Header() {
 
   const current =
     LINKS.find((link) => isActive(link.href, pathname))?.label ??
-    (pathname.startsWith("/profilo") ? "Profilo" : "Menu");
+    (pathname.startsWith("/profilo")
+      ? "Profilo"
+      : pathname.startsWith("/guida")
+        ? "Guida"
+        : "Menu");
 
   // Il menu si chiude toccando fuori o con Esc; con Esc il focus torna al
   // bottone, così chi usa la tastiera non lo perde in fondo alla pagina.
@@ -95,6 +99,16 @@ export function Header() {
             })}
           </ul>
         </nav>
+
+        <Link
+          href="/guida"
+          aria-current={pathname.startsWith("/guida") ? "page" : undefined}
+          className={`hidden py-3 text-xs transition-colors hover:text-white md:block ${
+            pathname.startsWith("/guida") ? "text-white" : "text-white/60"
+          }`}
+        >
+          Guida
+        </Link>
 
         <Link
           href="/profilo"
@@ -168,6 +182,13 @@ export function Header() {
             })}
           </ul>
           <div className="mx-auto max-w-7xl border-t border-white/10 px-1 py-2 sm:px-3">
+            <Link
+              href="/guida"
+              onClick={() => setOpen(false)}
+              className="block rounded-[var(--radius)] px-3 py-3 text-sm text-white/70 transition-colors hover:bg-white/5 hover:text-white"
+            >
+              Guida
+            </Link>
             <Link
               href="/profilo"
               onClick={() => setOpen(false)}

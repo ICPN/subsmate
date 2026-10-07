@@ -50,9 +50,21 @@ ciò che rompeva il Google Sheet — mai campi `status` o `nextDueDate` sugli sc
 - `lib/billing.ts` = funzioni pure con `now` come parametro. Mantienile testabili così.
 - Un `paidAt` precedente all'ultimo non fa arretrare `lastPaymentDate`: la scadenza
   tornerebbe indietro e l'abbonamento risulterebbe in falso ritardo.
-- Anche `periodEnd` di un `Payment` è calcolabile da `paidAt`: `paidForCycle` se lo ricava
-  quando manca, e non va trattato come fonte di verità. Le righe importate dal Google
-  Sheet non ce l'hanno — fidarsene le rendeva invisibili al calcolo del ciclo.
+- Anche `periodEnd` di un `Payment` è calcolabile: `paidForCycle` lo ricava **sempre** da
+  `periodStart` (o `paidAt` se manca) con periodicità e giorno di addebito di adesso, come
+  la scadenza. Quello salvato serve solo allo storico: dopo un cambio di configurazione
+  non combacia più, e fidarsene rendeva il ciclo non pagato. `periodStart` è l'àncora del
+  ciclo: `paidAt` per un versamento normale, l'inizio del ciclo per chi lo completa e per
+  i crediti.
+- Correggendo o cancellando il pagamento che definiva `lastPaymentDate`, la si ricostruisce
+  con `lastPaymentDateFrom` (inizio dell'ultimo ciclo coperto), non dal `paidAt` più
+  recente: i crediti di migrazione hanno tutti `paidAt` alla decorrenza.
+- **Più scritture che devono andare insieme stanno in `inTransaction()`** (`lib/mongodb.ts`):
+  pagamenti, crediti, esecuzione della migrazione, cancellazioni. La sessione passa da sola
+  (AsyncLocalStorage di Mongoose), ma dentro **niente `Promise.all`** né `return fail(...)`
+  dopo la prima scrittura: confermerebbe la transazione a metà, si lancia un errore. Chi
+  legge per poi spendere (credito) tocca prima l'abbonamento, così due richieste
+  simultanee entrano in conflitto e la seconda riparte rileggendo.
 - `DUE_SOON_DAYS = 15` viene dalle brand guidelines, non è arbitrario.
 - `frontend/lib/queries.ts` è l'unica fonte di lettura: Server Component e route handler
   la chiamano. **Le pagine non chiamano le proprie API via HTTP.** Letture nuove vanno lì.
@@ -91,14 +103,18 @@ ricostruire poi il conto. Spec:
   `CREDIT_KINDS` / `isCreditKind` di `lib/billing.ts` (`$nin` in Mongo), non `$eq:
   "incasso"`: i pagamenti anteriori al campo non lo hanno in documento.
 - **Si spende ciclo per ciclo**, un versamento ciascuno: cambiando periodicità può valerne
-  più di uno, e `paidForCycle` guarda un solo `periodEnd`.
+  più di uno, e `paidForCycle` guarda un ciclo solo.
 - **Un ciclo chiuso dal credito fa avanzare `lastPaymentDate`** fino all'inizio
-  dell'ultimo coperto, o un abbonamento in regola risulterebbe in ritardo.
+  dell'ultimo ciclo toccato dal credito, anche se coperto in parte: i precedenti sono
+  pagati, e quello diventa il corrente con il residuo da versare. Fermarsi all'ultimo
+  intero lasciava il resto su un ciclo che nessun calcolo guardava.
 - **Un versamento che completa un ciclo già coperto in parte resta ancorato a quel ciclo**
   e non avanza `lastPaymentDate`: spostare la scadenza scollegherebbe i versamenti
   precedenti e l'app richiederebbe soldi già incassati.
 - **Nessuno scheduler**: l'app avvisa, l'admin esegue dal banner sulla scheda. La rotta di
-  esecuzione rivendica la migrazione in modo atomico prima di scrivere.
+  esecuzione rivendica la migrazione (stato atteso nel filtro) e scrive tutto in una
+  transazione. Anche PATCH e DELETE della migrazione filtrano sullo stato atteso.
+- Abbonamenti e servizi riferiti da una migrazione non annullata non si eliminano.
 - **Un abbonamento cessato sulla destinazione si riusa**, non si duplica: l'indice unico
   persona × servizio copre anche i cessati, quindi rifiutare bloccherebbe chi torna
   indietro.
@@ -154,9 +170,14 @@ del token). Da Edge non si interroga Mongo, quindi il middleware da solo non bas
   self-service. È una scelta, spec in `docs/superpowers/specs/`.
 - Da `/profilo` (`PATCH /api/account`) l'admin cambia **solo** la propria email e password,
   sempre con la password attuale: l'id viene dalla sessione, mai dal corpo. Gli errori
-  contano nel blocco del login (`registerFailedAttempt` in `lib/auth.ts`, unico punto per
-  hash e blocco). Cambiare password riemette il cookie della sessione corrente, le altre si
-  chiudono via `passwordChangedAt`.
+  contano nel blocco del login (`lib/auth.ts`, unico punto per hash e blocco). Cambiare
+  password riemette il cookie della sessione corrente, le altre si chiudono via
+  `passwordChangedAt`.
+- Il blocco ha tre passi atomici: `claimAttempt` conta il tentativo **prima** di bcrypt
+  (tentativi paralleli non superano il limite), `registerFailedAttempt` blocca all'ultimo,
+  `clearAttempts` azzera solo se nessuno ha bloccato nel frattempo. Il login risponde
+  sempre 401 con lo stesso messaggio, anche ad account bloccato, e fa girare bcrypt
+  (`DUMMY_HASH`) anche per email inesistenti: tempi e stati non rivelano gli account.
 
 Le due verifiche, nessuna deve stampare nulla:
 
@@ -185,7 +206,9 @@ file d'ambiente solo dalla propria directory: la `.env` di root **non viene lett
 `MONGODB_URI` indefinita) e serve solo agli script Python. Il nome del database sta in
 `MONGODB_DB`, non nell'URI — nel path della connection string verrebbe ignorato
 (`lib/mongodb.ts` lo passa come `dbName`). L'URI del MongoDB Community locale (servizio
-Windows `MongoDB` su `127.0.0.1:27017`) resta commentata come ripiego offline.
+Windows `MongoDB` su `127.0.0.1:27017`) resta commentata come ripiego offline: è
+standalone, quindi **non supporta le transazioni** e pagamenti e migrazioni falliscono.
+Per usarlo va avviato come replica set a un nodo.
 
 `.env.local` è gitignorato: non sopravvive a clone o `git clean`, e senza l'app fallisce
 con «AUTH_SECRET non definita». Si ricrea da `.env.example` con l'URI della `.env` di root
@@ -245,6 +268,10 @@ Regole visive vincolanti in `brand-guidelines.md`, token in `frontend/app/global
   importi e le date.
 - Tono di voce: stati espliciti («In ritardo di 8 giorni», non «Attenzione richiesta»),
   verbo all'inizio per le azioni, niente frecce decorative né maiuscolo tracciato.
+
+**Guida** in `app/(protected)/guida/page.tsx`, per compito. Descrive il comportamento del
+codice: chi cambia una regola di calcolo, un flusso o un’etichetta citati lì **aggiorna
+anche la guida**. Le soglie si importano da `lib/billing.ts`, non si riscrivono nel testo.
 
 Next.js 16 App Router: `params` e `searchParams` sono `Promise` e vanno attesi. Le pagine
 che leggono dal database dichiarano `export const dynamic = "force-dynamic"`.

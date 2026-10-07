@@ -27,11 +27,9 @@ async function handlePATCH(request: Request, { params }: Context) {
       return fail("Solo una migrazione pianificata si può modificare.", 409);
     }
 
-    if (data.toService) {
-      const subscription = await Subscription.findById(migration.fromSubscription).lean();
-      if (subscription && String(subscription.service) === data.toService) {
-        return fail("Il servizio di destinazione coincide con quello attuale.", 422);
-      }
+    const subscription = await Subscription.findById(migration.fromSubscription).lean();
+    if (data.toService && subscription && String(subscription.service) === data.toService) {
+      return fail("Il servizio di destinazione coincide con quello attuale.", 422);
     }
 
     const changes: Record<string, unknown> = {};
@@ -39,8 +37,21 @@ async function handlePATCH(request: Request, { params }: Context) {
     if (data.effectiveDate !== undefined) changes.effectiveDate = data.effectiveDate;
     if (data.closeOld !== undefined) changes.closeOld = data.closeOld;
     if (data.notes !== undefined) changes.notes = data.notes;
+    // Come alla creazione: null se coincide con quella in corso, così non si
+    // congela una scelta che nessuno ha fatto.
+    if (data.toPeriodicity !== undefined) {
+      changes.toPeriodicity =
+        data.toPeriodicity === subscription?.periodicity ? null : data.toPeriodicity;
+    }
 
-    await Migration.findByIdAndUpdate(id, changes, { runValidators: true });
+    // Lo stato atteso sta nel filtro: fra la lettura qui sopra e la scrittura
+    // la migrazione può essere stata eseguita, e il piano non va più toccato.
+    const updated = await Migration.findOneAndUpdate(
+      { _id: id, status: "pianificata" },
+      changes,
+      { runValidators: true }
+    );
+    if (!updated) return fail("Solo una migrazione pianificata si può modificare.", 409);
     return ok(await getMigration(id));
   } catch (err) {
     return handleError(err);
@@ -63,7 +74,12 @@ async function handleDELETE(_request: Request, { params }: Context) {
       return fail("Una migrazione eseguita non si annulla.", 409);
     }
 
-    await Migration.findByIdAndUpdate(id, { status: "annullata" });
+    // Condizionato come la PATCH: un'esecuzione arrivata nel frattempo vince.
+    const cancelled = await Migration.findOneAndUpdate(
+      { _id: id, status: { $ne: "eseguita" } },
+      { status: "annullata" }
+    );
+    if (!cancelled) return fail("Una migrazione eseguita non si annulla.", 409);
     return ok({ annullata: true });
   } catch (err) {
     return handleError(err);

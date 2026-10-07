@@ -4,6 +4,8 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { AdminUser } from "@/models/AdminUser";
 import {
   MIN_PASSWORD_LENGTH,
+  claimAttempt,
+  clearAttempts,
   hashPassword,
   lockedMessage,
   registerFailedAttempt,
@@ -45,12 +47,15 @@ async function handlePATCH(request: Request) {
   // La password attuale protegge da chi trova una sessione aperta: senza,
   // basterebbe un cookie per cambiare email e password e prendersi l'account.
   // Gli errori contano nel blocco del login.
-  const locked = lockedMessage(admin.lockedUntil);
-  if (locked) return fail(locked, 423);
+  const tooMany = "Troppi tentativi con la password attuale: riprova fra qualche minuto.";
+  if (!(await claimAttempt(admin._id))) {
+    return fail(lockedMessage(admin.lockedUntil) ?? tooMany, 423);
+  }
   if (!(await verifyPassword(data.currentPassword, admin.passwordHash))) {
     await registerFailedAttempt(admin._id);
     return fail("Password attuale non corretta", 401);
   }
+  if (!(await clearAttempts(admin._id))) return fail(tooMany, 423);
 
   if (data.email) {
     const email = data.email.toLowerCase();
@@ -67,7 +72,6 @@ async function handlePATCH(request: Request) {
     // data con l'iat del token.
     admin.passwordChangedAt = new Date();
   }
-  admin.failedLoginAttempts = 0;
   await admin.save();
 
   // Un token nuovo per la sessione corrente, firmato dopo passwordChangedAt:

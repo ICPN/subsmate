@@ -145,7 +145,8 @@ password del database l'unica difesa).
   `grep -rL "requireAdmin" "app/(protected)" --include=page.tsx` — nessuno dei due deve
   stampare qualcosa.
 - **Non importare `bcryptjs` o Mongoose in `middleware.ts`**: finirebbero nel bundle Edge.
-- **L'admin locale ha la password di prova `SubsMateTest2026!`** finché non viene rigenerata.
+- **L'admin locale aveva una password di prova** impostata durante lo sviluppo: va rigenerata
+  (vedi `directives/gestione_admin.md`). Le password non si scrivono nei documenti.
 - **Il blocco anti forza bruta è per account**: chi conosce le email può tenere bloccati tutti
   gli admin. Procedura di sblocco in `directives/gestione_admin.md`.
 - **Un dev server Next potrebbe essere ancora attivo** su `localhost:3000`: prima di avviarne

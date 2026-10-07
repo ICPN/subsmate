@@ -45,10 +45,15 @@ export const subscriptionCreateSchema = z.object({
   lastPaymentDate: optionalDate,
   notes: z.string().optional(),
 });
-export const subscriptionUpdateSchema = subscriptionCreateSchema.partial().extend({
-  // Solo in modifica: si conosce dopo la fattura del fornitore. Null lo toglie.
-  firstCycleProviderCharge: z.number().min(0).nullable().optional(),
-});
+// Persona e servizio non si cambiano: pagamenti e migrazioni restano legati
+// alla coppia di partenza. Zod scarta in silenzio le chiavi fuori schema.
+export const subscriptionUpdateSchema = subscriptionCreateSchema
+  .omit({ person: true, service: true })
+  .partial()
+  .extend({
+    // Solo in modifica: si conosce dopo la fattura del fornitore. Null lo toglie.
+    firstCycleProviderCharge: z.number().min(0).nullable().optional(),
+  });
 
 export const paymentCreateSchema = z.object({
   subscription: objectId,

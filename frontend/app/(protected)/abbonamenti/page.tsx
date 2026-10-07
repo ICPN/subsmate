@@ -20,6 +20,7 @@ const STATUS_FILTERS: { value: PaymentStatus | "tutti"; label: string }[] = [
   { value: "in_scadenza", label: "In scadenza" },
   { value: "in_regola", label: "In regola" },
   { value: "da_attivare", label: "Da attivare" },
+  { value: "cessato", label: "Cessati" },
 ];
 
 /**

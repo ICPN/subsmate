@@ -32,13 +32,13 @@ async function handleGET(_request: Request, { params }: Context) {
     // Storico di tutti gli abbonamenti della persona, per il saldo del ciclo.
     const payments = await Payment.find(
       { subscription: { $in: subscriptions.map((sub) => sub._id) } },
-      { subscription: 1, amount: 1, paidAt: 1, periodEnd: 1 }
+      { subscription: 1, amount: 1, paidAt: 1, periodStart: 1 }
     ).lean();
     // paidAt serve a paidForCycle per ricavare il periodo dei pagamenti che
-    // non hanno periodEnd salvato, come le righe importate dal Google Sheet.
+    // non hanno periodStart salvato, come le righe importate dal Google Sheet.
     const paymentsBySubscription = new Map<
       string,
-      { amount: number; paidAt: Date | null; periodEnd: Date | null }[]
+      { amount: number; paidAt: Date | null; periodStart: Date | null }[]
     >();
     for (const payment of payments) {
       const key = String(payment.subscription);
@@ -46,7 +46,7 @@ async function handleGET(_request: Request, { params }: Context) {
       list.push({
         amount: payment.amount,
         paidAt: payment.paidAt ?? null,
-        periodEnd: payment.periodEnd ?? null,
+        periodStart: payment.periodStart ?? null,
       });
       paymentsBySubscription.set(key, list);
     }

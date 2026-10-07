@@ -12,8 +12,15 @@ import { AdminUser } from "@/models/AdminUser";
 
 const BCRYPT_COST = 12;
 export const MIN_PASSWORD_LENGTH = 12;
-const MAX_ATTEMPTS = 5;
-const LOCK_MINUTES = 15;
+export const MAX_ATTEMPTS = 5;
+export const LOCK_MINUTES = 15;
+
+/**
+ * Hash bcrypt di una stringa qualsiasi, con lo stesso costo di quelli veri:
+ * il login lo confronta quando l'account non esiste o non è utilizzabile,
+ * così il tempo di risposta non dice quali email sono registrate.
+ */
+export const DUMMY_HASH = "$2b$12$m9CeK9EwYqinEba9TVTs7e.xUJWpEE8o5tM7y5W9YhbLNTyZXMEI6";
 
 export async function verifyPassword(plain: string, hash: string): Promise<boolean> {
   return bcrypt.compare(plain, hash);
@@ -31,23 +38,43 @@ export function lockedMessage(lockedUntil: Date | null | undefined): string | nu
 }
 
 /**
- * Conta una password sbagliata e blocca l'account al quinto tentativo. Lo
- * stesso contatore vale per il login e per la password attuale chiesta dal
- * profilo: altrimenti un cookie di sessione rubato basterebbe a indovinare la
- * password per tentativi e prendersi l'account.
+ * Blocco anti forza bruta, in tre passi atomici. Lo stesso contatore vale per
+ * il login e per la password attuale chiesta dal profilo: altrimenti un
+ * cookie di sessione rubato basterebbe a indovinare la password per tentativi.
+ *
+ * 1. `claimAttempt` conta il tentativo PRIMA di bcrypt, nello stesso update
+ *    che controlla blocco e limite: tentativi paralleli non possono superare
+ *    il limite leggendo tutti un contatore ancora basso.
+ * 2. `registerFailedAttempt` blocca l'account se quel tentativo era l'ultimo.
+ * 3. `clearAttempts` azzera il contatore a password giusta, ma solo se nel
+ *    frattempo nessun tentativo parallelo ha bloccato l'account.
  */
-export async function registerFailedAttempt(adminId: unknown): Promise<void> {
-  // Incremento atomico: con richieste concorrenti un read-modify-write
-  // perderebbe conteggi, indebolendo proprio il blocco anti forza bruta.
-  const updated = await AdminUser.findByIdAndUpdate(
-    adminId,
-    { $inc: { failedLoginAttempts: 1 } },
-    { new: true }
-  ).lean();
+export async function claimAttempt(adminId: unknown): Promise<boolean> {
+  const result = await AdminUser.updateOne(
+    {
+      _id: adminId,
+      // $not invece di $lt/$lte: copre anche i documenti senza il campo.
+      failedLoginAttempts: { $not: { $gte: MAX_ATTEMPTS } },
+      lockedUntil: { $not: { $gt: new Date() } },
+    },
+    { $inc: { failedLoginAttempts: 1 } }
+  );
+  return result.modifiedCount === 1;
+}
 
-  if ((updated?.failedLoginAttempts ?? 0) >= MAX_ATTEMPTS) {
-    await AdminUser.findByIdAndUpdate(adminId, {
+export async function registerFailedAttempt(adminId: unknown): Promise<void> {
+  await AdminUser.updateOne(
+    { _id: adminId, failedLoginAttempts: { $gte: MAX_ATTEMPTS } },
+    {
       $set: { lockedUntil: new Date(Date.now() + LOCK_MINUTES * 60_000), failedLoginAttempts: 0 },
-    });
-  }
+    }
+  );
+}
+
+export async function clearAttempts(adminId: unknown): Promise<boolean> {
+  const result = await AdminUser.updateOne(
+    { _id: adminId, lockedUntil: { $not: { $gt: new Date() } } },
+    { $set: { failedLoginAttempts: 0, lockedUntil: null } }
+  );
+  return result.matchedCount === 1;
 }

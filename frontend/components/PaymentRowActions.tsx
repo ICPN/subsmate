@@ -130,7 +130,7 @@ export function PaymentRowActions({
         open={confirmOpen}
         onClose={() => setConfirmOpen(false)}
         title="Eliminare il pagamento?"
-        message={`Il pagamento di ${formatEUR(amount)} del ${formatDate(paidAt)} verrà eliminato. Se era il più recente, la prossima scadenza dell'abbonamento verrà ricalcolata sul pagamento precedente; se è l'unico pagamento registrato, l'abbonamento risulterà senza pagamenti e la scadenza sparirà.`}
+        message={`Il pagamento di ${formatEUR(amount)} del ${formatDate(paidAt)} verrà eliminato. Se era il più recente, la prossima scadenza dell'abbonamento verrà ricalcolata sul pagamento precedente; se è l'unico pagamento registrato, la scadenza verrà calcolata dalla data di inizio dell'abbonamento.`}
         confirmLabel="Elimina pagamento"
         onConfirm={handleDelete}
       />
