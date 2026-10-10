@@ -1,5 +1,5 @@
 import { requireAdmin } from "@/lib/requireAdmin";
-import { listPayments, listSubscriptions } from "@/lib/queries";
+import { listPayments, listSubscriptions, paymentOption } from "@/lib/queries";
 import { PageHeader } from "@/components/PageHeader";
 import {
   Card,
@@ -40,19 +40,7 @@ export default async function PaymentsPage({
   // Gli abbonamenti cessati non possono ricevere nuovi pagamenti: non si offrono.
   const subscriptionOptions = subscriptions
     .filter((sub) => sub.onboardingStatus !== "cessato")
-    .map((sub) => ({
-      _id: String(sub._id),
-      personName: sub.person
-        ? `${sub.person.lastName} ${sub.person.firstName}`
-        : "Persona rimossa",
-      email: sub.person?.email ?? "",
-      serviceName: sub.service?.name ?? "Servizio rimosso",
-      serviceLogo: sub.service?.logo ?? null,
-      totalDue: sub.computed.totalDue,
-      outstanding: sub.computed.outstanding,
-      donationSupplement: sub.donationSupplement,
-      firstCycleCredit: sub.firstCycleCreditAvailable,
-    }))
+    .map(paymentOption)
     .sort((a, b) => a.personName.localeCompare(b.personName, "it"));
 
   const SORT_ACCESSORS: Record<string, (payment: (typeof allPayments)[number]) => SortValue> = {

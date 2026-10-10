@@ -342,7 +342,26 @@ export default async function GuidePage() {
                 <Ui>Persone</Ui>: per ogni persona il totale dovuto su tutti i suoi servizi, utile
                 quando qualcuno paga Claude e ChatGPT insieme.
               </li>
+              <li>
+                Nel modulo <Ui>Registra pagamento</Ui>, scelto l’abbonamento, <Ui>Vedi
+                calcolo</Ui> mostra il calcolo completo di quanto deve la persona su tutti i suoi
+                servizi: quota, donazione, cicli con le scadenze, già versato, credito e totale.
+                Prepara anche un messaggio da copiare con <Ui>Copia messaggio</Ui>, che riporta
+                solo il saldo per servizio, l’eventuale credito scalato e il totale, e si può
+                ritoccare prima di copiarlo.
+              </li>
             </Steps>
+            <P>
+              Il sollecito conta ogni ciclo con la scadenza già passata o entro {DUE_SOON_DAYS}{" "}
+              giorni, anche più di uno per servizio, meno quanto già versato sul ciclo aperto. Un
+              abbonamento da attivare vale un ciclo, come primo pagamento. Il credito del primo
+              mese si scala una volta sola, sul totale.
+            </P>
+            <Note>
+              Un pagamento chiude un ciclo solo. Se la persona salda più cicli arretrati in un
+              colpo, registra un pagamento per ciascuno, con la data della sua scadenza:
+              registrandone uno unico, l’app lo attribuisce a un ciclo solo e il resto non copre i cicli saltati.
+            </Note>
             <Dl>
               <Term name="Dovuto nel ciclo corrente">
                 Somma dei totali dovuti degli abbonamenti attivi.

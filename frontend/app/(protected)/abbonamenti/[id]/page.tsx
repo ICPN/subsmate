@@ -1,7 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/requireAdmin";
-import { getSubscriptionDetail, listServices } from "@/lib/queries";
+import {
+  getSubscriptionDetail,
+  listServices,
+  listSubscriptions,
+  paymentOption,
+} from "@/lib/queries";
 import { PlanMigrationButton } from "@/components/MigrationForm";
 import { MigrationBanner } from "@/components/MigrationBanner";
 import { SubscriptionRowActions } from "@/components/SubscriptionActions";
@@ -53,6 +58,13 @@ export default async function SubscriptionDetailPage({
   const services = await listServices();
 
   const { subscription: sub, payments: allPayments } = detail;
+
+  // Il sollecito copre tutti gli abbonamenti della persona, non solo questo.
+  const personSubscriptions = sub.person
+    ? (
+        await listSubscriptions({ person: sub.person._id, onboardingStatus: { $ne: "cessato" } })
+      ).map(paymentOption)
+    : [];
 
   const SORT_ACCESSORS: Record<string, (payment: (typeof allPayments)[number]) => SortValue> = {
     data: (payment) => new Date(payment.paidAt),
@@ -182,6 +194,7 @@ export default async function SubscriptionDetailPage({
             defaultDonation={sub.computed.donationSupplement}
             defaultOutstanding={sub.computed.outstanding}
             defaultCredit={sub.firstCycleCreditAvailable}
+            personSubscriptions={personSubscriptions}
           />
         </Card>
 

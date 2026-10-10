@@ -305,6 +305,114 @@ export function availableFirstCycleCredit(
   return round2(Math.max(0, (credit ?? 0) - spent));
 }
 
+/**
+ * Scadenze da sollecitare: quella corrente e le successive, finché cadono
+ * entro DUE_SOON_DAYS da oggi — arretrate e in scadenza, la stessa soglia
+ * degli stati. Ognuna si ricava dalla corrente e non dalla precedente, così
+ * un addebito al 31 non resta inchiodato al 28 dopo febbraio.
+ */
+export function dueDatesToRequest(
+  due: Date | null,
+  periodicity: Periodicity,
+  billingDayOfMonth: number | null | undefined,
+  now: Date
+): Date[] {
+  if (!due) return [];
+  const dates: Date[] = [];
+  for (let cycle = 0; ; cycle++) {
+    const date = onBillingDay(
+      addMonths(new Date(due), cycle * PERIOD_MONTHS[periodicity]),
+      billingDayOfMonth
+    );
+    if (daysBetween(now, date) > DUE_SOON_DAYS) return dates;
+    dates.push(date);
+  }
+}
+
+/** Abbonamento, ridotto ai campi che servono al sollecito. */
+export interface ReminderInput {
+  serviceName: string;
+  totalDue: number;
+  donationSupplement: number;
+  paidForCurrentCycle: number;
+  nextDueDate: Date | string | null;
+  periodicity: Periodicity;
+  billingDayOfMonth: number | null;
+  status: PaymentStatus;
+}
+
+export interface ReminderLine {
+  serviceName: string;
+  periodicity: Periodicity;
+  /** Dovuto per un ciclo, donazione compresa. */
+  totalDue: number;
+  donationSupplement: number;
+  /** Vuoto per il primo pagamento: un abbonamento da attivare non ha scadenza. */
+  dueDates: Date[];
+  cycles: number;
+  /** Già versato sul ciclo aperto, scalato da `cycles × totalDue`. */
+  paid: number;
+  amount: number;
+  donation: number;
+}
+
+export interface Reminder {
+  lines: ReminderLine[];
+  /** Credito del primo mese scalato: mai oltre il dovuto. */
+  creditUsed: number;
+  total: number;
+  donation: number;
+}
+
+/**
+ * Quanto chiedere a una persona su tutti i suoi abbonamenti. A differenza del
+ * resto dell'app conta anche i cicli arretrati oltre il primo: chi ha saltato
+ * agosto e settembre li deve entrambi. Il credito del primo mese è della
+ * persona e si scala una volta sola, sul totale.
+ */
+export function paymentReminder(
+  subscriptions: ReminderInput[],
+  credit: number,
+  now: Date
+): Reminder {
+  const lines: ReminderLine[] = [];
+  for (const sub of subscriptions) {
+    if (sub.status === "cessato") continue;
+    const due = sub.nextDueDate ? new Date(sub.nextDueDate) : null;
+    const firstPayment = sub.status === "da_attivare";
+    let dueDates = firstPayment
+      ? []
+      : dueDatesToRequest(due, sub.periodicity, sub.billingDayOfMonth, now);
+    // Un ciclo pagato in parte si sollecita anche se la scadenza è lontana.
+    if (!firstPayment && due && dueDates.length === 0 && sub.paidForCurrentCycle > 0) {
+      dueDates = [due];
+    }
+    const cycles = firstPayment ? 1 : dueDates.length;
+    const paid = firstPayment ? 0 : sub.paidForCurrentCycle;
+    const amount = round2(Math.max(0, cycles * sub.totalDue - paid));
+    if (amount <= 0) continue;
+    lines.push({
+      serviceName: sub.serviceName,
+      periodicity: sub.periodicity,
+      totalDue: sub.totalDue,
+      donationSupplement: sub.donationSupplement,
+      dueDates,
+      cycles,
+      paid,
+      amount,
+      donation: round2(Math.min(amount, cycles * sub.donationSupplement)),
+    });
+  }
+  const owed = round2(lines.reduce((sum, line) => sum + line.amount, 0));
+  const creditUsed = round2(Math.min(Math.max(0, credit), owed));
+  return {
+    lines,
+    creditUsed,
+    total: round2(owed - creditUsed),
+    donation: round2(lines.reduce((sum, line) => sum + line.donation, 0)),
+  };
+}
+
 function round2(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }

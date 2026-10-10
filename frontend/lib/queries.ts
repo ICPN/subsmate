@@ -21,6 +21,7 @@ import {
 } from "@/lib/migration";
 import { serviceLogoFor } from "@/lib/serviceLogo";
 import type { Periodicity, OnboardingStatus } from "@/models/Subscription";
+import type { PaymentSubscriptionOption } from "@/components/RegisterPaymentForm";
 
 /**
  * Letture condivise fra route handler e Server Component.
@@ -226,6 +227,31 @@ export async function listSubscriptions(
       migration,
     };
   });
+}
+
+/**
+ * Abbonamento ridotto a ciò che serve al modulo di pagamento e al sollecito.
+ * Una sola mappatura per la pagina Pagamenti e la scheda abbonamento.
+ */
+export function paymentOption(sub: SubscriptionView): PaymentSubscriptionOption {
+  return {
+    _id: sub._id,
+    personId: sub.person?._id ?? "",
+    firstName: sub.person?.firstName ?? "",
+    personName: sub.person ? `${sub.person.lastName} ${sub.person.firstName}` : "Persona rimossa",
+    email: sub.person?.email ?? "",
+    serviceName: sub.service?.name ?? "Servizio rimosso",
+    serviceLogo: sub.service?.logo ?? null,
+    totalDue: sub.computed.totalDue,
+    outstanding: sub.computed.outstanding,
+    donationSupplement: sub.donationSupplement,
+    firstCycleCredit: sub.firstCycleCreditAvailable,
+    paidForCurrentCycle: sub.computed.paidForCurrentCycle,
+    nextDueDate: sub.computed.nextDueDate?.toISOString() ?? null,
+    periodicity: sub.periodicity,
+    billingDayOfMonth: sub.service?.billingDayOfMonth ?? null,
+    status: sub.computed.status,
+  };
 }
 
 /**

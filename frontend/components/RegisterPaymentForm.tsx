@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { buttonPrimary } from "@/components/ui";
 import { Field, TextInput, Select, ErrorMessage, submitJson } from "@/components/form";
 import { SubscriptionPicker } from "@/components/SubscriptionPicker";
-import { formatEUR, toDateInputValue } from "@/lib/billing";
+import { PaymentReminder } from "@/components/PaymentReminder";
+import { formatEUR, toDateInputValue, type ReminderInput } from "@/lib/billing";
 
 /**
  * Form di registrazione pagamento.
@@ -32,20 +33,22 @@ const METHODS = [
   { value: "altro", label: "Altro" },
 ];
 
-export interface PaymentSubscriptionOption {
+/** Costruita da `paymentOption()` di lib/queries.ts. */
+export interface PaymentSubscriptionOption extends ReminderInput {
   _id: string;
+  /** Raggruppa gli abbonamenti della stessa persona per il sollecito. */
+  personId: string;
+  firstName: string;
   /** Campi separati, non una sola etichetta: la ricerca li interroga uno per uno. */
   personName: string;
   email: string;
-  serviceName: string;
   serviceLogo: string | null;
-  /** Dovuto per un ciclo intero. */
-  totalDue: number;
   /** Quanto manca ancora per il ciclo in corso, se già pagato in parte. */
   outstanding: number;
-  donationSupplement: number;
   /** Credito del primo mese ancora da spendere. */
   firstCycleCredit: number;
+  /** ISO: attraversa il confine verso il Client Component. */
+  nextDueDate: string | null;
 }
 
 /** Pagamento da correggere, nei campi che il form sa modificare. */
@@ -68,10 +71,13 @@ export function RegisterPaymentForm({
   defaultDonation = 0,
   defaultOutstanding = 0,
   defaultCredit = 0,
+  personSubscriptions,
   onSuccess,
 }: {
   subscriptionId?: string;
   subscriptions?: PaymentSubscriptionOption[];
+  /** Con `subscriptionId`: gli abbonamenti della persona, per il sollecito. */
+  personSubscriptions?: PaymentSubscriptionOption[];
   /** Se presente il form corregge questo pagamento invece di crearne uno. */
   payment?: EditablePayment;
   defaultAmount?: number;
@@ -91,6 +97,12 @@ export function RegisterPaymentForm({
   // perché sposterebbe anche la persona e la scadenza di due abbonamenti.
   const chooseSubscription = !subscriptionId && !editing;
   const current = subscriptions?.find((option) => option._id === selected);
+  // Il sollecito copre tutta la persona, non solo l'abbonamento scelto.
+  const reminderOptions = editing
+    ? []
+    : chooseSubscription
+      ? (subscriptions ?? []).filter((option) => current && option.personId === current.personId)
+      : (personSubscriptions ?? []);
 
   const expected = chooseSubscription ? (current?.totalDue ?? 0) : defaultAmount;
   const outstanding = chooseSubscription ? (current?.outstanding ?? 0) : defaultOutstanding;
@@ -303,15 +315,18 @@ export function RegisterPaymentForm({
 
       {error ? <ErrorMessage>{error}</ErrorMessage> : null}
 
-      <button type="submit" disabled={pending} className={buttonPrimary}>
-        {editing
-          ? pending
-            ? "Salvataggio in corso"
-            : "Salva modifiche"
-          : pending
-            ? "Registrazione in corso"
-            : "Registra pagamento"}
-      </button>
+      <div className="flex flex-wrap items-center gap-2">
+        <button type="submit" disabled={pending} className={buttonPrimary}>
+          {editing
+            ? pending
+              ? "Salvataggio in corso"
+              : "Salva modifiche"
+            : pending
+              ? "Registrazione in corso"
+              : "Registra pagamento"}
+        </button>
+        {reminderOptions.length > 0 ? <PaymentReminder options={reminderOptions} /> : null}
+      </div>
     </form>
   );
 }
