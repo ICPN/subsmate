@@ -10,7 +10,9 @@ import { usePathname, useRouter } from "next/navigation";
  * Da 768px in su le voci stanno in riga. Sotto, il bottone mostra la pagina in
  * cui ci si trova e apre un menu a tendina sovrapposto al contenuto: per questo
  * è l'unico punto dell'header con un'ombra (§5, ombre solo per elementi
- * sovrapposti).
+ * sovrapposti). Resta fisso in cima scorrendo, così la navigazione è sempre a
+ * portata; sticky e non fixed, per non dover compensare l'altezza nel
+ * contenuto.
  */
 
 const LINKS = [
@@ -68,7 +70,10 @@ export function Header() {
   }
 
   return (
-    <header ref={headerRef} className="relative z-40 bg-[var(--ink-navy)] text-white">
+    <header
+      ref={headerRef}
+      className="sticky top-0 z-40 bg-[var(--ink-navy)] text-white"
+    >
       <div className="mx-auto flex max-w-7xl items-center gap-x-8 px-4 sm:px-6">
         <Link
           href="/"

@@ -246,7 +246,6 @@ export function paymentOption(sub: SubscriptionView): PaymentSubscriptionOption 
     outstanding: sub.computed.outstanding,
     donationSupplement: sub.donationSupplement,
     firstCycleCredit: sub.firstCycleCreditAvailable,
-    paidForCurrentCycle: sub.computed.paidForCurrentCycle,
     nextDueDate: sub.computed.nextDueDate?.toISOString() ?? null,
     periodicity: sub.periodicity,
     billingDayOfMonth: sub.service?.billingDayOfMonth ?? null,

@@ -43,8 +43,6 @@ export interface PaymentSubscriptionOption extends ReminderInput {
   personName: string;
   email: string;
   serviceLogo: string | null;
-  /** Quanto manca ancora per il ciclo in corso, se già pagato in parte. */
-  outstanding: number;
   /** Credito del primo mese ancora da spendere. */
   firstCycleCredit: number;
   /** ISO: attraversa il confine verso il Client Component. */

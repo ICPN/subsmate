@@ -39,7 +39,7 @@ export default async function GuidePage() {
       />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[15rem_minmax(0,1fr)]">
-        <nav aria-label="Indice della guida" className="lg:sticky lg:top-6 lg:self-start">
+        <nav aria-label="Indice della guida" className="lg:sticky lg:top-20 lg:self-start">
           <Card title="Indice">
             <ol className="space-y-1 px-4 py-3 text-sm">
               {SECTIONS.map((section) => (
@@ -352,10 +352,11 @@ export default async function GuidePage() {
               </li>
             </Steps>
             <P>
-              Il sollecito conta ogni ciclo con la scadenza già passata o entro {DUE_SOON_DAYS}{" "}
-              giorni, anche più di uno per servizio, meno quanto già versato sul ciclo aperto. Un
-              abbonamento da attivare vale un ciclo, come primo pagamento. Il credito del primo
-              mese si scala una volta sola, sul totale.
+              Il sollecito somma il residuo del ciclo in corso, se è stato pagato solo in parte,
+              e un ciclo intero per ogni scadenza già passata o entro {DUE_SOON_DAYS} giorni,
+              anche più di una per servizio. Un versamento oltre il dovuto resta sul suo ciclo e
+              non riduce i successivi. Un abbonamento da attivare vale un ciclo, come primo
+              pagamento. Il credito del primo mese si scala una volta sola, sul totale.
             </P>
             <Note>
               Un pagamento chiude un ciclo solo. Se la persona salda più cicli arretrati in un
@@ -456,7 +457,7 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <section id={id} className="scroll-mt-6">
+    <section id={id} className="scroll-mt-20">
       <Card
         title={
           <>

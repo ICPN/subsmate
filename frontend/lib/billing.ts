@@ -334,7 +334,12 @@ export interface ReminderInput {
   serviceName: string;
   totalDue: number;
   donationSupplement: number;
-  paidForCurrentCycle: number;
+  /**
+   * Quanto manca al ciclo in corso, quello che termina alla scadenza: è già
+   * iniziato, quindi è dovuto subito. Mai negativo: un incasso oltre il
+   * dovuto resta su quel ciclo e non copre i successivi.
+   */
+  outstanding: number;
   nextDueDate: Date | string | null;
   periodicity: Periodicity;
   billingDayOfMonth: number | null;
@@ -347,11 +352,14 @@ export interface ReminderLine {
   /** Dovuto per un ciclo, donazione compresa. */
   totalDue: number;
   donationSupplement: number;
-  /** Vuoto per il primo pagamento: un abbonamento da attivare non ha scadenza. */
+  /** Abbonamento da attivare: un ciclo, senza scadenza. */
+  firstPayment: boolean;
+  /** Residuo del ciclo in corso, se pagato solo in parte. */
+  outstanding: number;
+  /** Inizio di ogni ciclo da pagare intero: scadenze passate o vicine. */
   dueDates: Date[];
+  /** Cicli interi da pagare: `dueDates.length`, o 1 per il primo pagamento. */
   cycles: number;
-  /** Già versato sul ciclo aperto, scalato da `cycles × totalDue`. */
-  paid: number;
   amount: number;
   donation: number;
 }
@@ -361,14 +369,20 @@ export interface Reminder {
   /** Credito del primo mese scalato: mai oltre il dovuto. */
   creditUsed: number;
   total: number;
+  /** Donazione compresa nei cicli interi, mai oltre il totale da versare. */
   donation: number;
 }
 
 /**
- * Quanto chiedere a una persona su tutti i suoi abbonamenti. A differenza del
- * resto dell'app conta anche i cicli arretrati oltre il primo: chi ha saltato
- * agosto e settembre li deve entrambi. Il credito del primo mese è della
- * persona e si scala una volta sola, sul totale.
+ * Quanto chiedere a una persona su tutti i suoi abbonamenti: il residuo del
+ * ciclo in corso più un ciclo intero per ogni scadenza passata o entro
+ * DUE_SOON_DAYS. A differenza del resto dell'app conta anche i cicli arretrati
+ * oltre il primo: chi ha saltato agosto e settembre li deve entrambi.
+ *
+ * Non usa `paidForCurrentCycle`: è quanto versato per il ciclo che TERMINA
+ * alla scadenza, quindi per chi ha pagato regolarmente vale un ciclo intero,
+ * e sottrarlo azzerava il dovuto. Il credito del primo mese è della persona
+ * e si scala una volta sola, sul totale.
  */
 export function paymentReminder(
   subscriptions: ReminderInput[],
@@ -378,38 +392,41 @@ export function paymentReminder(
   const lines: ReminderLine[] = [];
   for (const sub of subscriptions) {
     if (sub.status === "cessato") continue;
-    const due = sub.nextDueDate ? new Date(sub.nextDueDate) : null;
     const firstPayment = sub.status === "da_attivare";
-    let dueDates = firstPayment
+    const outstanding = firstPayment ? 0 : round2(Math.max(0, sub.outstanding));
+    const dueDates = firstPayment
       ? []
-      : dueDatesToRequest(due, sub.periodicity, sub.billingDayOfMonth, now);
-    // Un ciclo pagato in parte si sollecita anche se la scadenza è lontana.
-    if (!firstPayment && due && dueDates.length === 0 && sub.paidForCurrentCycle > 0) {
-      dueDates = [due];
-    }
+      : dueDatesToRequest(
+          sub.nextDueDate ? new Date(sub.nextDueDate) : null,
+          sub.periodicity,
+          sub.billingDayOfMonth,
+          now
+        );
     const cycles = firstPayment ? 1 : dueDates.length;
-    const paid = firstPayment ? 0 : sub.paidForCurrentCycle;
-    const amount = round2(Math.max(0, cycles * sub.totalDue - paid));
+    const amount = round2(outstanding + cycles * sub.totalDue);
     if (amount <= 0) continue;
     lines.push({
       serviceName: sub.serviceName,
       periodicity: sub.periodicity,
       totalDue: sub.totalDue,
       donationSupplement: sub.donationSupplement,
+      firstPayment,
+      outstanding,
       dueDates,
       cycles,
-      paid,
       amount,
-      donation: round2(Math.min(amount, cycles * sub.donationSupplement)),
+      // Solo i cicli interi: del residuo non si sa quanta donazione resti.
+      donation: round2(cycles * sub.donationSupplement),
     });
   }
   const owed = round2(lines.reduce((sum, line) => sum + line.amount, 0));
   const creditUsed = round2(Math.min(Math.max(0, credit), owed));
+  const total = round2(owed - creditUsed);
   return {
     lines,
     creditUsed,
-    total: round2(owed - creditUsed),
-    donation: round2(lines.reduce((sum, line) => sum + line.donation, 0)),
+    total,
+    donation: round2(Math.min(total, lines.reduce((sum, line) => sum + line.donation, 0))),
   };
 }
 

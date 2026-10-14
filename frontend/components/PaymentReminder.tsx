@@ -136,9 +136,9 @@ export function PaymentReminder({ options }: { options: PaymentSubscriptionOptio
         {reminder ? (
           <div className="space-y-4 px-4 py-4 text-sm">
             <p className="text-xs text-[var(--ink-muted)]">
-              Calcolo al {formatDate(now)}: conta ogni ciclo con la scadenza già passata o
-              entro {DUE_SOON_DAYS} giorni, meno quanto
-              già versato sul ciclo aperto.
+              Calcolo al {formatDate(now)}: il residuo del ciclo in corso, se pagato solo
+              in parte, più un ciclo intero per ogni scadenza già passata o entro{" "}
+              {DUE_SOON_DAYS} giorni.
             </p>
 
             {reminder.lines.map((line) => (
@@ -159,8 +159,13 @@ export function PaymentReminder({ options }: { options: PaymentSubscriptionOptio
                   </Row>
                   <Row label="Donazione per ciclo">{formatEUR(line.donationSupplement)}</Row>
                   <Row label="Totale per ciclo">{formatEUR(line.totalDue)}</Row>
-                  <Row label="Cicli da pagare">{line.cycles}</Row>
-                  {line.dueDates.length === 0 ? (
+                  {line.outstanding > 0 ? (
+                    <Row label="Residuo del ciclo in corso, pagato solo in parte">
+                      {formatEUR(line.outstanding)}
+                    </Row>
+                  ) : null}
+                  <Row label="Cicli interi da pagare">{line.cycles}</Row>
+                  {line.firstPayment ? (
                     <p className="pl-3 text-xs text-[var(--ink-muted)]">
                       Primo pagamento: l’abbonamento è da attivare e non ha ancora una scadenza.
                     </p>
@@ -173,11 +178,10 @@ export function PaymentReminder({ options }: { options: PaymentSubscriptionOptio
                       ))}
                     </ul>
                   )}
-                  <Row label={`${line.cycles} × ${formatEUR(line.totalDue)}`}>
-                    {formatEUR(line.cycles * line.totalDue)}
-                  </Row>
-                  {line.paid > 0 ? (
-                    <Row label="Già versato sul ciclo aperto">-{formatEUR(line.paid)}</Row>
+                  {line.cycles > 0 ? (
+                    <Row label={`${line.cycles} × ${formatEUR(line.totalDue)}`}>
+                      {formatEUR(line.cycles * line.totalDue)}
+                    </Row>
                   ) : null}
                   <Row label="Da versare" strong>
                     {formatEUR(line.amount)}
