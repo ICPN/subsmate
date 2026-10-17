@@ -136,6 +136,23 @@ async function registerPayment(
     billingDay
   );
 
+  if (creditToUse < 0) {
+    // Recupero di un anticipo del gestore: l'incasso contiene la cifra in
+    // più, e la riga negativa la toglie dal ciclo. Stesso conflitto sulla
+    // persona del credito: due recuperi simultanei non superano il debito.
+    await Person.updateOne({ _id: subscription.person }, { $set: { updatedAt: new Date() } });
+    const available = await getFirstCycleCreditAvailable(subscription.person);
+    const debt = Math.max(0, -available);
+    // Fin qui si sono scritti solo i timestamp di abbonamento e persona:
+    // confermarli con un rifiuto non lascia nulla a metà, come per il credito.
+    if (-creditToUse > debt + 0.004) {
+      return fail(
+        `L'anticipo da recuperare è ${formatEUR(debt)}: non se ne può recuperare di più.`,
+        409
+      );
+    }
+  }
+
   if (creditToUse > 0) {
     // Il credito del primo mese è della persona e si spende su qualunque suo
     // abbonamento: il conflitto va quindi provocato sulla persona, non solo
@@ -180,7 +197,9 @@ async function registerPayment(
 
   // Stesso periodo dell'incasso: paidForCycle li somma sullo stesso ciclo,
   // e il ciclo si chiude con incasso + credito.
-  if (creditToUse > 0) {
+  // Un recupero è la stessa riga con importo negativo: toglie dal ciclo
+  // l'anticipo che l'incasso contiene, e riporta a zero il debito.
+  if (creditToUse !== 0) {
     await Payment.create({
       subscription: id,
       person: subscription.person,
@@ -191,7 +210,10 @@ async function registerPayment(
       kind: "credito_primo_mese",
       periodStart,
       periodEnd,
-      notes: "Credito del primo mese non addebitato dal fornitore",
+      notes:
+        creditToUse > 0
+          ? "Credito del primo mese non addebitato dal fornitore"
+          : "Recupero dell'anticipo del gestore sul primo ciclo",
     });
   }
 

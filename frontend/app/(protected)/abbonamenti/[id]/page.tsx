@@ -17,7 +17,7 @@ import { parseSort, sortRows, sortHrefBuilder, type SortValue } from "@/lib/sort
 import { RegisterPaymentForm } from "@/components/RegisterPaymentForm";
 import { PaymentRowActions } from "@/components/PaymentRowActions";
 import {
-  CREDIT_KIND_LABELS,
+  creditKindLabel,
   formatEUR,
   formatDate,
   isCreditKind,
@@ -176,6 +176,11 @@ export default async function SubscriptionDetailPage({
               Credito primo mese da usare {formatEUR(sub.firstCycleCreditAvailable)}
             </span>
           ) : null}
+          {sub.firstCycleCreditAvailable < 0 ? (
+            <span className="tnum mt-1 block text-xs text-[var(--ink-muted)]">
+              Anticipo da recuperare {formatEUR(-sub.firstCycleCreditAvailable)}
+            </span>
+          ) : null}
         </DetailTile>
         <DetailTile label="Prossima scadenza">
           <span className="tnum">{formatDate(sub.computed.nextDueDate)}</span>
@@ -265,7 +270,7 @@ export default async function SubscriptionDetailPage({
                       </Td>
                       <Td label="Metodo">
                         {isCreditKind(payment.kind) ? (
-                          <Pill>{CREDIT_KIND_LABELS[payment.kind]}</Pill>
+                          <Pill>{creditKindLabel(payment.kind, payment.amount)}</Pill>
                         ) : (
                           <Pill>{payment.method}</Pill>
                         )}

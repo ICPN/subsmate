@@ -52,7 +52,8 @@ export const subscriptionUpdateSchema = subscriptionCreateSchema
   .partial()
   .extend({
     // Solo in modifica: si conosce dopo la fattura del fornitore. Null lo toglie.
-    firstCycleProviderCharge: z.number().min(0).nullable().optional(),
+    // Negativo: anticipo del gestore da recuperare (debito della persona).
+    firstCycleProviderCharge: z.number().nullable().optional(),
   });
 
 export const paymentCreateSchema = z.object({
@@ -60,7 +61,8 @@ export const paymentCreateSchema = z.object({
   amount: z.coerce.number().min(0).optional(), // se assente si usa il totale dovuto calcolato
   donationAmount: z.coerce.number().min(0).optional(),
   // Credito del primo mese da spendere su questo ciclo, oltre all'importo.
-  firstCycleCredit: z.coerce.number().min(0).optional(),
+  // Negativo: anticipo da recuperare, versato in più dentro l'importo.
+  firstCycleCredit: z.coerce.number().optional(),
   paidAt: z.coerce.date().optional(),
   method: z.enum(PAYMENT_METHODS).optional(),
   reference: z.string().optional(),

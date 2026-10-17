@@ -217,8 +217,8 @@ export default async function GuidePage() {
                 Verifica sulla fattura di OpenAI quanto è stato addebitato per il primo mese.
               </li>
               <li>
-                Apri la scheda dell’abbonamento → <Ui>Modifica</Ui> → «Addebito del fornitore per
-                il primo mese». Salva: la scheda mostra «Credito primo mese da usare».
+                Apri la scheda dell’abbonamento → <Ui>Modifica</Ui> → «Addebito del fornitore al
+                primo ciclo». Salva: la scheda mostra «Credito primo mese da usare».
               </li>
               <li>
                 Al rinnovo registra il pagamento come sempre. Il campo «Credito primo mese da
@@ -240,6 +240,38 @@ export default async function GuidePage() {
               Per annullare un credito usato per errore, elimina la riga «Credito primo mese»
               dallo storico: torna disponibile. Se la persona passa a un altro servizio, tutto il
               credito non ancora usato passa con lei.
+            </P>
+
+            <H3>Anticipo da recuperare</H3>
+            <P>
+              A volte succede il contrario: la persona entra pochi giorni prima della data di
+              fatturazione, il fornitore fa pagare subito quei giorni e poi il ciclo intero. Quei
+              soldi li anticipi tu, e la persona te li restituisce al pagamento successivo, in
+              aggiunta alla quota.
+            </P>
+            <Example>
+              Trimestrale su ChatGPT, 5 giorni prima della fatturazione OpenAI addebita 3 €. Scrivi
+              -3 nel campo «Addebito del fornitore al primo ciclo»: al rinnovo la persona versa la
+              quota del trimestre più 3 €.
+            </Example>
+            <Steps>
+              <li>
+                Nella scheda dell’abbonamento → <Ui>Modifica</Ui>, scrivi l’importo anticipato con
+                il segno meno. La scheda mostra «Anticipo da recuperare».
+              </li>
+              <li>
+                Al pagamento successivo il modulo mostra «Anticipo da recuperare» già compilato e
+                l’importo proposto lo comprende. Registra l’incasso intero: nello storico compare
+                anche una riga «Recupero anticipo» con l’importo negativo, che chiude il ciclo.
+                Metti 0 per recuperarlo la volta dopo.
+              </li>
+            </Steps>
+            <P>
+              Come il credito, l’anticipo è della persona: si recupera su qualunque suo servizio e
+              si compensa con un eventuale credito. Non passa in una migrazione: resta da
+              recuperare sul nuovo abbonamento. <Ui>Vedi calcolo</Ui> e il messaggio di
+              sollecito lo aggiungono al totale, ma solo se c’è anche una quota da chiedere.
+              Eliminando la riga «Recupero anticipo» l’anticipo torna da recuperare.
             </P>
           </Section>
 

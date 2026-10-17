@@ -258,7 +258,8 @@ export function paymentOption(sub: SubscriptionView): PaymentSubscriptionOption 
  * dell'abbonamento che l'ha generato: chi ha ChatGPT e Claude lo spende anche
  * su Claude. Credito di tutti i suoi abbonamenti, meno le righe
  * "credito_primo_mese" su qualunque abbonamento, meno quanto portato via dalle
- * migrazioni eseguite.
+ * migrazioni eseguite. Negativo se la persona deve restituire un anticipo:
+ * crediti e anticipi si compensano in un saldo solo.
  *
  * In sequenza e non in parallelo: la usano anche le rotte che scrivono in
  * transazione, e una transazione non accetta operazioni parallele.
@@ -272,7 +273,8 @@ async function firstCycleCreditByPerson(
   if (ids.length === 0) return new Map();
 
   const sources = await Subscription.find(
-    { person: { $in: ids }, firstCycleCredit: { $gt: 0 } },
+    // Anche negativi: un anticipo del gestore da recuperare.
+    { person: { $in: ids }, firstCycleCredit: { $nin: [null, 0] } },
     { person: 1, firstCycleCredit: 1 }
   ).lean();
   for (const sub of sources) {

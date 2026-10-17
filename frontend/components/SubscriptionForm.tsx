@@ -197,13 +197,12 @@ export function SubscriptionForm({
         {/* Si conosce solo dopo la fattura del fornitore, quindi a posteriori. */}
         {isEdit ? (
           <Field
-            label="Addebito del fornitore per il primo mese (€)"
-            hint="Solo se il fornitore ha addebitato il primo mese in proporzione ai giorni. La differenza dalla tariffa diventa credito della persona."
+            label="Addebito del fornitore al primo ciclo (€)"
+            hint="Positivo: quanto ha addebitato il fornitore per il primo mese in proporzione ai giorni, e la differenza dalla tariffa diventa credito della persona. Negativo (per esempio -3): un anticipo tuo, come i giorni fatti pagare prima della data di fatturazione, che diventa un debito della persona da recuperare al prossimo pagamento."
           >
             <TextInput
               type="number"
               step="0.01"
-              min={0}
               name="firstCycleProviderCharge"
               defaultValue={initialValues?.firstCycleProviderCharge ?? ""}
             />

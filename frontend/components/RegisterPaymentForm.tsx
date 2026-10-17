@@ -111,13 +111,15 @@ export function RegisterPaymentForm({
   const suggestedAmount = outstanding > 0 ? outstanding : expected;
   // Il credito del primo mese si propone tutto, fino al dovuto: l'admin può
   // ridurlo o metterlo a zero per tenerlo alla volta dopo. In modifica no:
-  // il credito è una riga a parte, non un attributo dell'incasso.
+  // il credito è una riga a parte, non un attributo dell'incasso. Negativo è
+  // un anticipo da recuperare: lo stesso calcolo lo somma all'importo.
   const creditAvailable = editing
     ? 0
     : chooseSubscription
       ? (current?.firstCycleCredit ?? 0)
       : defaultCredit;
   const creditSuggested = Math.min(creditAvailable, suggestedAmount);
+  const debt = creditAvailable < 0;
 
   // In modifica si parte dai valori registrati, non dal suggerimento: l'importo
   // incassato è un fatto, la quota dovuta solo un'ipotesi di partenza.
@@ -247,23 +249,31 @@ export function RegisterPaymentForm({
           />
         </Field>
 
-        {creditAvailable > 0 ? (
+        {creditAvailable !== 0 ? (
           <Field
-            label="Credito primo mese da usare"
-            hint={`Disponibili ${formatEUR(creditAvailable)}. Metti 0 per tenerlo per la prossima volta.`}
+            label={debt ? "Anticipo da recuperare" : "Credito primo mese da usare"}
+            hint={
+              debt
+                ? `Da recuperare ${formatEUR(-creditAvailable)}, già sommati all'importo. Metti 0 per recuperarlo la prossima volta.`
+                : `Disponibili ${formatEUR(creditAvailable)}. Metti 0 per tenerlo per la prossima volta.`
+            }
           >
+            {/* Per un anticipo l'admin scrive la cifra positiva; il segno
+                negativo lo mette il modulo, come la rotta se lo aspetta. */}
             <TextInput
               type="number"
               name="firstCycleCredit"
               step="0.01"
               min="0"
-              max={creditAvailable}
-              value={credit}
+              max={Math.abs(creditAvailable)}
+              value={debt ? credit.replace(/^-/, "") : credit}
               onChange={(event) => {
-                setCredit(event.target.value);
+                const typed = event.target.value;
+                const signed = debt && typed !== "" ? String(-Number(typed)) : typed;
+                setCredit(signed);
                 // L'importo segue il credito finché l'admin non lo ha scritto lui.
                 if (!amountEdited) {
-                  setAmount(String(round2(suggestedAmount - Number(event.target.value || 0))));
+                  setAmount(String(round2(suggestedAmount - Number(signed || 0))));
                 }
               }}
             />

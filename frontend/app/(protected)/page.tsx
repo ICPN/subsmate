@@ -19,7 +19,7 @@ import { MigrationBadge } from "@/components/MigrationBadge";
 import { parseSort, sortRows, sortHrefBuilder, type SortValue } from "@/lib/sorting";
 import type { SubscriptionView } from "@/lib/queries";
 import {
-  CREDIT_KIND_LABELS,
+  creditKindLabel,
   formatEUR,
   formatDate,
   isCreditKind,
@@ -233,7 +233,7 @@ export default async function DashboardPage({
                         </Td>
                         <Td label="Tipo">
                           {isCreditKind(payment.kind) ? (
-                            <Pill>{CREDIT_KIND_LABELS[payment.kind]}</Pill>
+                            <Pill>{creditKindLabel(payment.kind, payment.amount)}</Pill>
                           ) : (
                             <Pill>{payment.method}</Pill>
                           )}

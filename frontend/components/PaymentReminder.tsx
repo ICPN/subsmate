@@ -38,6 +38,7 @@ function reminderMessage(firstName: string, reminder: Reminder): string {
     ...(reminder.creditUsed > 0
       ? [`Credito primo mese già scalato: ${formatEUR(reminder.creditUsed)}`]
       : []),
+    ...(reminder.debt > 0 ? [`Anticipo da recuperare: ${formatEUR(reminder.debt)}`] : []),
     `Totale da versare: ${formatEUR(reminder.total)}`,
     "",
     "Grazie!",
@@ -86,7 +87,8 @@ export function PaymentReminder({ options }: { options: PaymentSubscriptionOptio
 
   const reminder = state?.reminder;
   const now = state?.now ?? new Date();
-  const owed = reminder ? reminder.total + reminder.creditUsed : 0;
+  // Somma delle righe dei servizi, prima di credito e anticipo.
+  const owed = reminder ? reminder.total + reminder.creditUsed - reminder.debt : 0;
   // Gli abbonamenti senza nulla da chiedere si mostrano lo stesso, con la loro
   // scadenza: si capisce perché non compaiono nel conto.
   const settled = reminder
@@ -236,6 +238,11 @@ export function PaymentReminder({ options }: { options: PaymentSubscriptionOptio
                         </Row>
                       ) : null}
                     </>
+                  ) : null}
+                  {reminder.debt > 0 ? (
+                    <Row label="Anticipo da recuperare, versato da te al primo ciclo">
+                      +{formatEUR(reminder.debt)}
+                    </Row>
                   ) : null}
                   <div className="border-t border-[var(--border)] pt-1">
                     <Row label="Totale da versare" strong>

@@ -31,13 +31,15 @@ const SubscriptionSchema = new Schema(
     // Quanto il fornitore ha addebitato per il primo mese, quando lo fa in
     // proporzione ai giorni (ChatGPT, aggiungendo un posto a metà ciclo). Lo
     // inserisce l'admin a posteriori, dopo averlo verificato sulla fattura.
-    firstCycleProviderCharge: { type: Number, min: 0, default: null },
+    // Negativo se è un anticipo del gestore da recuperare (giorni addebitati
+    // prima della data di fatturazione): diventa un debito della persona.
+    firstCycleProviderCharge: { type: Number, default: null },
     // Credito della persona: tariffa mensile al momento dell'inserimento meno
     // l'addebito qui sopra. Salvato e non derivato perché la tariffa può
     // cambiare, e il credito resta quello che la persona ha versato allora. Il
     // disponibile (meno quanto già speso o portato via da una migrazione) si
-    // calcola invece a ogni lettura.
-    firstCycleCredit: { type: Number, min: 0, default: null },
+    // calcola invece a ogni lettura. Negativo per un anticipo da recuperare.
+    firstCycleCredit: { type: Number, default: null },
     notes: { type: String, trim: true, default: "" },
   },
   { timestamps: true }

@@ -16,7 +16,7 @@ import { PAGE_SIZES, parsePagination, paginate, pageHrefBuilder } from "@/lib/pa
 import Link from "next/link";
 import { Pill } from "@/components/StatusBadge";
 import { NewPaymentButton, PaymentRowActions } from "@/components/PaymentRowActions";
-import { CREDIT_KIND_LABELS, formatEUR, formatDate, isCreditKind } from "@/lib/billing";
+import { creditKindLabel, formatEUR, formatDate, isCreditKind } from "@/lib/billing";
 
 export const dynamic = "force-dynamic";
 
@@ -192,7 +192,7 @@ export default async function PaymentsPage({
                       </Td>
                       <Td label="Metodo">
                         {isCreditKind(payment.kind) ? (
-                          <Pill>{CREDIT_KIND_LABELS[payment.kind]}</Pill>
+                          <Pill>{creditKindLabel(payment.kind, payment.amount)}</Pill>
                         ) : (
                           <Pill>{payment.method}</Pill>
                         )}

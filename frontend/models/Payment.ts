@@ -26,7 +26,20 @@ const PaymentSchema = new Schema(
     // Denormalizzata: permette l'aggregato per persona senza join sugli abbonamenti.
     person: { type: Types.ObjectId, ref: "Person", required: true, index: true },
     // Importo totale incassato (quota servizio + eventuale donazione).
-    amount: { type: Number, required: true, min: 0 },
+    // Negativo solo per il recupero di un anticipo ("credito_primo_mese"):
+    // toglie dal ciclo quanto l'incasso contiene in più per restituirlo.
+    amount: {
+      type: Number,
+      required: true,
+      validate: {
+        // In un aggiornamento `this` è la query, senza `kind`: lì resta >= 0,
+        // e le righe di credito non si modificano comunque.
+        validator(this: { kind?: string }, value: number) {
+          return value >= 0 || this.kind === "credito_primo_mese";
+        },
+        message: "L'importo non può essere negativo.",
+      },
+    },
     // Parte dell'importo imputata a donazione, per il totale donazioni in dashboard.
     donationAmount: { type: Number, min: 0, default: 0 },
     paidAt: { type: Date, required: true, default: () => new Date() },
@@ -36,7 +49,9 @@ const PaymentSchema = new Schema(
     // come un versamento, ma NON va sommato agli incassi, altrimenti si
     // conterebbe due volte. "credito_primo_mese" è la parte del primo ciclo
     // che il fornitore non ha addebitato (Subscription.firstCycleCredit),
-    // spesa su un ciclo successivo: stessa regola, non è un incasso.
+    // spesa su un ciclo successivo: stessa regola, non è un incasso. Con
+    // importo negativo è il recupero di un anticipo del gestore: l'incasso
+    // della stessa data lo contiene già, la riga lo toglie dal ciclo.
     kind: { type: String, enum: PAYMENT_KINDS, required: true, default: "incasso" },
     // Periodo coperto dal pagamento, derivato da paidAt: ricalcolato anche
     // quando una correzione sposta la data, non solo alla registrazione.

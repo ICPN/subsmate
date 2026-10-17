@@ -142,6 +142,15 @@ credito della persona. Nessun riferimento a ChatGPT nel codice: vale per ogni se
 - **Passa sempre in una migrazione**, anche con `a_scadenza`, sommato al credito dei mesi
   e fuori dal tetto «mai più dell'incassato»: è denaro già versato. Passa tutto il
   disponibile della persona.
+- **Un addebito negativo è un anticipo del gestore** (giorni fatti pagare dal fornitore
+  prima della data di fatturazione): `firstCycleCredit` = l'addebito stesso, negativo, ed
+  è un debito della persona. Stesso saldo del credito, che quindi **può essere negativo**
+  (niente minimo a zero in `availableFirstCycleCredit`, query su `$nin: [null, 0]`, non
+  `$gt: 0`). Si recupera al pagamento con una riga `credito_primo_mese` di **importo
+  negativo** sullo stesso periodo: l'incasso contiene la cifra in più, la riga la toglie
+  dal ciclo e riporta a zero il debito. Lo schema `Payment` ammette importi negativi solo
+  per quel `kind`. Un debito non passa in migrazione (`migrationBalance` tiene il minimo a
+  zero): resta alla persona e si recupera sul nuovo abbonamento.
 
 ## Modello dati
 

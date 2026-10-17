@@ -288,21 +288,34 @@ export function isCreditKind(kind: string | null | undefined): boolean {
  * fra l'aggiunta del posto e il rinnovo, mentre la persona versa il mese pieno.
  * La differenza è sua. La donazione resta fuori: è versata e non consumata
  * indipendentemente da quanto addebita il fornitore.
+ *
+ * Un addebito negativo è l'opposto: un anticipo del gestore, per esempio i
+ * giorni che il fornitore fa pagare prima della data di fatturazione. Diventa
+ * un debito della persona, che lo restituisce al pagamento successivo.
  */
 export function firstCycleCredit(monthlyRate: number, providerCharge: number): number {
+  if (providerCharge < 0) return round2(providerCharge);
   return round2(Math.max(0, monthlyRate - providerCharge));
 }
 
 /**
  * Quanto resta del credito del primo mese, tolti i versamenti
  * "credito_primo_mese" già spesi e quello trasferito da migrazioni eseguite.
+ * Negativo se è un anticipo ancora da recuperare: i recuperi sono righe con
+ * importo negativo, quindi la stessa sottrazione lo riporta a zero.
  */
 export function availableFirstCycleCredit(
   credit: number | null | undefined,
   used: number[]
 ): number {
   const spent = used.reduce((sum, amount) => sum + amount, 0);
-  return round2(Math.max(0, (credit ?? 0) - spent));
+  return round2((credit ?? 0) - spent);
+}
+
+/** Etichetta di una riga di credito nello storico: il recupero ha importo negativo. */
+export function creditKindLabel(kind: string, amount: number): string {
+  if (kind === "credito_primo_mese" && amount < 0) return "Recupero anticipo";
+  return CREDIT_KIND_LABELS[kind] ?? kind;
 }
 
 /**
@@ -368,6 +381,8 @@ export interface Reminder {
   lines: ReminderLine[];
   /** Credito del primo mese scalato: mai oltre il dovuto. */
   creditUsed: number;
+  /** Anticipo del gestore da recuperare, sommato al totale. */
+  debt: number;
   total: number;
   /** Donazione compresa nei cicli interi, mai oltre il totale da versare. */
   donation: number;
@@ -382,7 +397,9 @@ export interface Reminder {
  * Non usa `paidForCurrentCycle`: è quanto versato per il ciclo che TERMINA
  * alla scadenza, quindi per chi ha pagato regolarmente vale un ciclo intero,
  * e sottrarlo azzerava il dovuto. Il credito del primo mese è della persona
- * e si scala una volta sola, sul totale.
+ * e si scala una volta sola, sul totale. Se è negativo è un anticipo da
+ * recuperare e si somma, ma solo quando c'è altro da chiedere: si recupera
+ * al prossimo pagamento, non con un sollecito a sé.
  */
 export function paymentReminder(
   subscriptions: ReminderInput[],
@@ -421,10 +438,12 @@ export function paymentReminder(
   }
   const owed = round2(lines.reduce((sum, line) => sum + line.amount, 0));
   const creditUsed = round2(Math.min(Math.max(0, credit), owed));
-  const total = round2(owed - creditUsed);
+  const debt = lines.length > 0 ? round2(Math.max(0, -credit)) : 0;
+  const total = round2(owed - creditUsed + debt);
   return {
     lines,
     creditUsed,
+    debt,
     total,
     donation: round2(Math.min(total, lines.reduce((sum, line) => sum + line.donation, 0))),
   };
