@@ -28,6 +28,11 @@ parziali, passaggi da un servizio all'altro, primo mese addebitato in proporzion
 > li ricalcola a ogni lettura dai pagamenti registrati. È ciò che rompeva il Google Sheet.
 > Se un valore è sbagliato si corregge il pagamento, non lo stato.
 
+## Icona e schermata Home
+
+SubsMate usa la propria icona nell’interfaccia, nella scheda del browser e come icona Apple. Il manifest include le icone da 192 e 512 pixel per i dispositivi compatibili e prevede l’apertura in modalità autonoma dalla schermata Home.
+
+Per aggiungere l’app alla Home, usa la relativa funzione del browser (su iPhone o iPad dal menu Condividi). La disponibilità e i passaggi dipendono dal dispositivo e dal browser. L’aggiunta alla Home crea un collegamento all’app web: serve una connessione e non è previsto il supporto offline.
 ## Stack
 
 | Livello | Tecnologia |

@@ -1,4 +1,5 @@
 import { LoginForm } from "@/components/LoginForm";
+import Image from "next/image";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,8 @@ export default async function LoginPage({
   return (
     <div className="flex min-h-screen items-center justify-center px-6">
       <div className="w-full max-w-sm">
-        <h1 className="font-[family-name:var(--font-manrope)] text-[28px] font-bold leading-tight">
+        <h1 className="flex items-center gap-3 font-[family-name:var(--font-manrope)] text-[28px] font-bold leading-tight">
+          <Image src="/subsmate.svg" alt="" width={40} height={40} />
           SubsMate
         </h1>
         <p className="mb-6 mt-1 text-sm text-[var(--ink-muted)]">
