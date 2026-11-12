@@ -37,7 +37,7 @@
   --font-display: var(--font-manrope);
   --font-sans: var(--font-inter);
 
-  --radius-card: 12px;
+  --radius-card: 8px;
 }
 
 html {

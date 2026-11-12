@@ -35,7 +35,7 @@ export function Card({
 }) {
   return (
     <section
-      className={`rounded-[var(--radius)] lg:rounded-card border border-[var(--border)] bg-[var(--paper)] ${className}`}
+      className={`rounded-[var(--radius)] border border-[var(--border)] bg-[var(--paper)] ${className}`}
     >
       {title || action ? (
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] px-4 py-3">
@@ -84,7 +84,7 @@ export function StatCard({
   } as const;
 
   const base =
-    "block rounded-[var(--radius)] lg:rounded-card border border-[var(--border)] bg-[var(--surface)] px-3 py-4 text-center sm:px-4 sm:py-5";
+    "block rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] px-3 py-4 text-center sm:px-4 sm:py-5";
   // Il feedback del click è bordo e sfondo, mai uno dei quattro colori di
   // stato: quelli restano riservati allo stato di un abbonamento.
   const interattivo =
