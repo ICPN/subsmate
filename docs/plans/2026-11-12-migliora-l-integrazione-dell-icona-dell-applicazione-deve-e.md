@@ -12,9 +12,9 @@
 
 ## Phase 2: Arrotondare i contenitori desktop (@frontend_dev)
 
-**Obiettivo:** rendere più arrotondati i contenitori principali su desktop, usando componenti e token esistenti.
+**Obiettivo aggiornato:** mantenere i contenitori principali al raggio esistente di 8 px, conforme alle linee guida, su desktop e mobile.
 
-**Decisione del Head of Staff:** mantenere gli 8 px già applicati alle card e considerare i bordi conformi. Non è richiesto un ulteriore arrotondamento; proseguire con README e verifiche nella fase 3.
+**Decisione:** @head_of_engineering ha scelto di mantenere gli 8 px e considerare conformi i bordi esistenti. Il Head of Staff ha confermato di proseguire con README e verifiche nella fase 3; non è richiesto un ulteriore arrotondamento.
 
 **Verifiche:** coerenza con le linee guida, assenza di contenuti tagliati e controllo della resa desktop e mobile.
 
