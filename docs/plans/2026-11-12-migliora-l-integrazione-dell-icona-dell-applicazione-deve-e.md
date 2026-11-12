@@ -14,6 +14,8 @@
 
 **Obiettivo:** rendere più arrotondati i contenitori principali su desktop, usando componenti e token esistenti.
 
+**Decisione di @head_of_engineering:** mantenere gli 8 px già applicati alle card e considerare i bordi conformi. Non è richiesto un ulteriore arrotondamento; proseguire con README e verifiche nella fase 3.
+
 **Verifiche:** coerenza con le linee guida, assenza di contenuti tagliati e controllo della resa desktop e mobile.
 
 ## Phase 3: Aggiornare README e completare la verifica (@frontend_dev)
