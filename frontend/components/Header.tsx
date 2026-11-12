@@ -80,7 +80,7 @@ export function Header() {
           href="/"
           className="flex items-center gap-2 py-3 font-[family-name:var(--font-manrope)] text-lg font-bold tracking-tight"
         >
-          <Image src="/subsmate.svg" alt="" width={28} height={28} />
+          <Image src="/icon.png" alt="" width={28} height={28} className="rounded-[var(--radius)]" />
           SubsMate
         </Link>
 

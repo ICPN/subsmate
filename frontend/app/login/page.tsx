@@ -18,7 +18,7 @@ export default async function LoginPage({
     <div className="flex min-h-screen items-center justify-center px-6">
       <div className="w-full max-w-sm">
         <h1 className="flex items-center gap-3 font-[family-name:var(--font-manrope)] text-[28px] font-bold leading-tight">
-          <Image src="/subsmate.svg" alt="" width={40} height={40} />
+          <Image src="/icon.png" alt="" width={40} height={40} className="rounded-[var(--radius)]" />
           SubsMate
         </h1>
         <p className="mb-6 mt-1 text-sm text-[var(--ink-muted)]">
