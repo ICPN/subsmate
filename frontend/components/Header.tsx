@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 
 /**
@@ -77,8 +78,9 @@ export function Header() {
       <div className="mx-auto flex max-w-7xl items-center gap-x-8 px-4 sm:px-6">
         <Link
           href="/"
-          className="py-3 font-[family-name:var(--font-manrope)] text-lg font-bold tracking-tight"
+          className="flex items-center gap-2 py-3 font-[family-name:var(--font-manrope)] text-lg font-bold tracking-tight"
         >
+          <Image src="/subsmate.svg" alt="" width={28} height={28} />
           SubsMate
         </Link>
 
